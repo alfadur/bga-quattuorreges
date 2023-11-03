@@ -1,0 +1,42 @@
+/**
+ *------
+ * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
+ * QuattuorReges implementation : © <Your name here> <Your email address here>
+ *
+ * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
+ * See http://en.boardgamearena.com/#!doc/Studio for more information.
+ * -----
+ */
+
+:root {
+    --hex-width: 120px;
+    --hex-height: 102px;
+}
+
+.qtr-board-container {
+    display: flex;
+    justify-content: center;
+}
+
+.qtr-board {
+    max-width: 1000px;
+    flex-shrink: 1;
+}
+
+.qtr-hex {
+    width: var(--hex-width);
+    height: var(--hex-height);
+    clip-path: polygon(0 50%, 25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%);
+}
+
+.qtr-hex:hover {
+    background-color: yellow !important;
+}
+
+.qtr-hex-red {
+    background-color: red;
+}
+
+.qtr-hex-black {
+    background-color: black;
+}
