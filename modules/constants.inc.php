@@ -40,18 +40,9 @@ interface Globals
     const RESCUER_ID = 12;
 }
 
-interface HexDirection {
-    const TOP = [0, -1];
-    const TOP_RIGHT = [1, 0];
-    const BOTTOM_RIGHT = [1, 1];
-    const BOTTOM = [0, 1];
-    const BOTTOM_LEFT = [-1, 0];
-    const TOP_LEFT = [-1, -1];
-
-    const ALL = [
-        self::TOP, self::TOP_RIGHT, self::BOTTOM_RIGHT, self::BOTTOM, self::BOTTOM_LEFT, self::TOP_LEFT
-    ];
-}
+const HEX_DIRECTIONS = [
+    [1, 0], [1, 1], [0, 1], [-1, 0], [-1, -1], [0, -1]
+];
 
 interface Suit {
     const HEARTS = 0b00;

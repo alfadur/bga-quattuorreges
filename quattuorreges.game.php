@@ -101,7 +101,7 @@ class QuattuorReges extends Table
         }
     }
 
-    static function canCapture(object $piece, object $target): bool
+    static function canCapture(array $piece, array $target): bool
     {
         if (((int)$piece['suit'] & Suit::OWNER_MASK) === ((int)$target['suit'] & Suit::OWNER_MASK)) {
             return false;
@@ -196,7 +196,8 @@ class QuattuorReges extends Table
 
     function move(int $x, int $y, array $steps, bool $retreat): void
     {
-        $this->gamestate->nextState('move');
+        self::checkAction("move");
+
         $playerId = self::getActivePlayerId();
         $tx = $x;
         $ty = $y;
@@ -206,7 +207,7 @@ class QuattuorReges extends Table
             if ($i > 0) {
                 $checks[] = "x = $tx AND y = $ty";
             }
-            [$dx, $dy] = HexDirection::ALL[$step];
+            [$dx, $dy] = HEX_DIRECTIONS[$step];
             $tx += $dx;
             $ty += $dy;
             if (!self::isValidSpace($tx, $ty)) {
@@ -229,18 +230,26 @@ class QuattuorReges extends Table
 
         $side = self::getPlayerNoById($playerId) - 1;
         $suitOwner = $side << 1;
-        [$movedPiece, $capturedPiece] = self::getObjectListFromDb(<<<EOF
+        $ownerMask = Suit::OWNER_MASK;
+
+        $pieces = self::getObjectListFromDb(<<<EOF
             SELECT * FROM piece 
-            WHERE x = $x AND y = $y AND suit & $suitOwner <> 0 
+            WHERE x = $x AND y = $y AND (suit & $ownerMask) = $suitOwner 
                AND (SELECT COUNT(*) FROM piece AS kings
                     WHERE kings.suit = suit) <> 0
                OR x = $tx AND y = $ty
-            ORDER BY ABS(x - $x) + ABS(y - $y) ASC
+            ORDER BY ABS(CAST(x AS SIGNED) - $x) 
+                     + ABS(CAST(y AS SIGNED) - $y) ASC
             LIMIT 2
             EOF);
 
-        if ($movedPiece <> null && (int)$movedPiece['x'] <> $x || (int)$movedPiece['y'] <>
-        $y) {
+        $movedPiece = $pieces[0] ?? null;
+        $capturedPiece = $pieces[1] ?? null;
+
+        if ($movedPiece === null
+            || (int)$movedPiece['x'] !== $x
+            || (int)$movedPiece['y'] !== $y)
+        {
             throw new BgaUserException('Invalid piece');
         }
 
@@ -279,9 +288,31 @@ class QuattuorReges extends Table
             $ty = $y;
         }
 
-        $rescue = self::getRescueCount($tx, $ty, $side) > 0;
+        $rescue = self::getRescueCount($tx, $ty, $side, $movedPiece['value']) > 0;
         if ($rescue) {
             self::setGameStateValue(Globals::RESCUER, $tx + ($ty << 8));
+        }
+
+        if ($capturedPiece === null) {
+            self::notifyAllPlayers('move', '${player_name} moves ${pieceIcon} to (${x},${y})', [
+                'player_name' => self::getActivePlayerName(),
+                'movedPiece' => "$movedPiece[suit],$movedPiece[value]",
+                'x' => $tx,
+                'y' => $ty,
+                'pieceIcon' => "$movedPiece[suit],$movedPiece[value]",
+                'preserve' => ['pieceIcon', 'x', 'y']
+            ]);
+        } else {
+            self::notifyAllPlayers('move', '${player_name} moves ${pieceIcon} to (${x},${y}) and captures ${pieceIconC}', [
+                'player_name' => self::getActivePlayerName(),
+                'movedPiece' => "$movedPiece[suit],$movedPiece[value]",
+                'capturedPiece' => "$capturedPiece[suit],$capturedPiece[value]",
+                'x' => $tx,
+                'y' => $ty,
+                'pieceIcon' => "$movedPiece[suit],$movedPiece[value]",
+                'pieceIconC' => "$capturedPiece[suit],$capturedPiece[value]",
+                'preserve' => ['pieceIcon', 'pieceIconC', 'x', 'y']
+            ]);
         }
 
         $this->gamestate->nextState($rescue ? 'rescue' : 'next');
@@ -326,6 +357,7 @@ class QuattuorReges extends Table
     function pass(): void
     {
         self::checkAction('pass');
+
         if ($this->gamestate->state_id() === State::MOVE) {
             self::setGameStateValue(Globals::MOVED_SUITS, 0b11);
         }
@@ -370,9 +402,9 @@ class QuattuorReges extends Table
             FROM piece INNER JOIN player  
                 ON player_no = 1 + ((suit & $ownerMask) >> 1)
             WHERE value IN ($queen, $king, $ace)
-                AND y = $lastSpace * (player_no - 1) 
+                AND y = $lastSpace * (2 - player_no) 
             GROUP BY player_id
-            HAVING COUNT(value) > 0
+            HAVING COUNT(*) > 0
             ORDER BY player_no DESC
             LIMIT 1
             EOF);

@@ -26,6 +26,7 @@ class Table {
     static function getGameinfos(): array {return [];}
     static function getPlayersNumber(): int { return 0; }
     static function getActivePlayerId(): string { return ''; }
+    static function getActivePlayerName(): string { return ''; }
     static function getCurrentPlayerId(): string { return ''; }
     static function getPlayerNameById(string $playerId): string { return ''; }
     static function getPlayerNoById(string $playerId): int { return 0; }

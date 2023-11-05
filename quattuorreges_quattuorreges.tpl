@@ -1,7 +1,7 @@
 {OVERALL_GAME_HEADER}
 
 <div id="qtr-board-container">
-    <div class="qtr-captures"></div>
+    <div class="qtr-captures" data-color="black"></div>
     <div id="qtr-board">
         <!-- BEGIN row -->
         <div class="qtr-board-row">
@@ -11,11 +11,7 @@
         </div>
         <!-- END row -->
     </div>
-    <div class="qtr-captures"></div>
+    <div class="qtr-captures" data-color="red"></div>
 </div>
-
-<script type="text/javascript">
-
-</script>  
 
 {OVERALL_GAME_FOOTER}

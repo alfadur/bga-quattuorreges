@@ -13,14 +13,23 @@
     --space-height: 40px;
 }
 
-.qtr-board-container {
+#qtr-board-container {
     display: flex;
     flex-flow: row nowrap;
     justify-content: center;
 }
 
+#qtr-board-container[data-color="black"] {
+    flex-flow: row-reverse nowrap;
+}
+
 .qtr-captures {
     flex-shrink: 1;
+    flex-grow: 0;
+    flex-basis: 200px;
+    display: flex;
+    flex-flow: row wrap;
+    align-content: center;
 }
 
 #qtr-board {
@@ -30,7 +39,7 @@
     flex-flow: column nowrap;
 }
 
-#qtr-board.qtr-red-player {
+#qtr-board-container[data-color="red"] #qtr-board {
     flex-flow: column-reverse nowrap;
 }
 
@@ -40,7 +49,7 @@
     justify-content: center;
 }
 
-.qtr-board.qtr-black-player .qtr-board-row {
+#qtr-board-container[data-color="black"] .qtr-board-row {
     flex-flow: row-reverse nowrap;
 }
 
@@ -59,6 +68,10 @@
     background-color: green !important;
 }
 
+.qtr-board-space.qtr-selectable {
+    background-color: yellowgreen !important;
+}
+
 #qtr-board-space-7-3, #qtr-board-space-15-3 {
     background-color: #f008;
 }
@@ -73,17 +86,54 @@
     aspect-ratio: 62 / 88; /*TODO compatibility*/
     margin: auto;
     color: white;
-    border-radius: 2px;
+    border-radius: 7px;
     border: var(--border-size) solid white;
     font-size: 26px;
     line-height: 16px;
     text-align: center;
+    pointer-events: none;
 }
 
-.qtr-piece.qtr-red-player {
+.qtr-piece[data-color="red"] {
     background-color: red;
 }
 
-.qtr-piece.qtr-black-player {
+.qtr-piece[data-color="black"] {
     background-color: black;
+}
+
+.qtr-piece.qtr-selected {
+    background-color: greenyellow;
+}
+
+.qtr-moving, .qtr-moving-simple {
+    animation-duration: 900ms;
+    animation-timing-function: ease;
+    animation-fill-mode: forwards;
+    z-index: 1;
+}
+
+.qtr-moving {
+    offset-rotate: 0deg;
+    offset-anchor: top left;
+    animation-name: follow-path;
+}
+
+@keyframes follow-path {
+    from { offset-distance: 100%; }
+    to { offset-distance: 0; }
+}
+
+.qtr-moving-simple {
+    animation-name: follow-path-simple;
+}
+
+@keyframes follow-path-simple {
+    to { transform: none; }
+}
+
+.qtr-piece-icon {
+    display: inline-block;
+    vertical-align: middle;
+    border-color: slategray;
 }

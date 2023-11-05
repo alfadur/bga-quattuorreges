@@ -7,20 +7,7 @@
  * This code has been produced on the BGA studio platform for use on https://boardgamearena.com.
  * See http://en.doc.boardgamearena.com/Studio for more information.
  * -----
- * 
- * quattuorreges.action.php
- *
- * QuattuorReges main action entry point
- *
- *
- * In this file, you are describing all the methods that can be called from your
- * user interface logic (javascript).
- *       
- * If you define a method "myAction" here, then you can call it from your javascript code with:
- * this.ajaxcall( "/quattuorreges/quattuorreges/myAction.html", ...)
- *
  */
-  
   
 class action_quattuorreges extends APP_GameAction
 {
@@ -45,6 +32,9 @@ class action_quattuorreges extends APP_GameAction
 
     function parseList(string $args, int $size): array
     {
+        if (strlen($args) === 0) {
+            return [];
+        }
         $values = array_map(
             fn($value) => (int)$value,
             explode(',', $args));

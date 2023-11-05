@@ -19,12 +19,126 @@ const pieceValues = Object.freeze({
     "13": "K"
 });
 
-const suitValues = Object.freeze({
+const pieceSuits = Object.freeze({
     "0": "♥",
     "1": "♦",
     "2": "♠",
     "3": "♣",
-})
+});
+
+const moveDirections = Object.freeze([[1, 0], [1, 1], [0, 1], [-1, 0], [-1, -1], [0, -1]]
+    .map(([x, y]) => Object.freeze({x, y})));
+
+function getPieceRange(pieceValue) {
+    pieceValue = parseInt(pieceValue);
+    return pieceValue === 0 || pieceValue === 9 ? 3 :
+        pieceValue === 8 ? 4 : 2;
+}
+
+function *spacesAround(space) {
+    let index = 0;
+    for (const {x, y} of moveDirections) {
+        yield [index++,{
+            x: parseInt(space.x) + x,
+            y: parseInt(space.y) + y
+        }];
+    }
+}
+
+function getPlayerColor(suit) {
+    return (parseInt(suit) & 0x2) === 0 ?  "red" : "black";
+}
+
+function createPiece(suit, value) {
+    const content = `${pieceValues[value]}<br>${pieceSuits[suit]}`;
+    return `<div id="qtr-piece-${suit}-${value}"
+        class="qtr-piece" 
+        data-color="${getPlayerColor(suit)}"
+        data-value="${value}">${content}</div>`;
+}
+
+function canCapture(pieceValue, targetValue) {
+    pieceValue = parseInt(pieceValue);
+    targetValue = parseInt(targetValue);
+    return pieceValue === 0
+        || 11 <= pieceValue && pieceValue <= 13 && 11 <= targetValue && targetValue <= 13
+        && (pieceValue - targetValue + 3) % 3 === 1
+        || 11 <= pieceValue && pieceValue <= 13 && 7 <= targetValue && targetValue <= 10
+        && !(pieceValue === 11 && targetValue === 7)
+        || 7 <= pieceValue && pieceValue <= 10 && targetValue === 0
+        || 7 <= pieceValue && pieceValue <= 10 && 7 <= targetValue && targetValue < pieceValue
+        || pieceValue === 7 && targetValue === 11;
+}
+
+class Queue {
+    values = [];
+    offset = 0;
+
+    isEmpty() { return this.offset === this.values.length; }
+    enqueue(value) { this.values.push(value); }
+    dequeue() { return this.isEmpty() ? undefined : this.values[this.offset++]; }
+}
+
+function* collectPaths(x, y, range) {
+    const queue = new Queue;
+    const visited = new Set;
+
+    const startPath = {
+        space: {x: parseInt(x), y: parseInt(y)},
+        steps: []
+    };
+
+    queue.enqueue(startPath);
+    visited.add(JSON.stringify(startPath.space));
+
+    while (!queue.isEmpty()) {
+        const {space, steps} = queue.dequeue();
+        if (steps.length < range) {
+            for (const [directionIndex, newSpace] of spacesAround(space)) {
+                const value = JSON.stringify(newSpace);
+
+                if (!visited.has(value)) {
+                    visited.add(value);
+                    const newPath = {
+                        space: newSpace,
+                        steps: [...steps, directionIndex]
+                    };
+                    const isPassable = yield newPath;
+                    if (isPassable === undefined || isPassable) {
+                        queue.enqueue(newPath);
+                    }
+                }
+            }
+        }
+    }
+}
+
+function prepareMove(x, y, color, pieceValue) {
+    const result = [];
+
+    const paths = collectPaths(x, y, getPieceRange(pieceValue));
+    let item = paths.next();
+
+    while (!item.done) {
+        const path = item.value;
+        const space = document.getElementById(
+            `qtr-board-space-${path.space.x}-${path.space.y}`);
+        if (space) {
+            const target = space.firstChild;
+            if (!target
+                || (color !== target.dataset.color &&
+                    canCapture(pieceValue, target.dataset.value)))
+            {
+                space.classList.add("qtr-selectable");
+                result.push(path);
+            }
+        }
+
+        item = paths.next(space && space.children.length === 0);
+    }
+
+    return result;
+}
 
 define([
     "dojo","dojo/_base/declare",
@@ -33,6 +147,11 @@ define([
 ], (dojo, declare) => declare("bgagame.quattuorreges", ebg.core.gamegui, {
     constructor() {
         console.log("quattuorreges constructor");
+        try {
+            this.useOffsetAnimation = CSS.supports("offset-path", "path('M 0 0')");
+        } catch (e) {
+            this.useOffsetAnimation = false;
+        }
     },
 
     setup(data) {
@@ -40,11 +159,8 @@ define([
 
         const playerId = this.getCurrentPlayerId().toString();
         const order = parseInt(data.players[playerId].no) - 1;
-        const board = document.getElementById("qtr-board");
-        board.dataset.order = order.toString();
-        board.classList.add(
-            order > 0 ? "qtr-black-player" : "qtr-red-player"
-        );
+        const container = document.getElementById("qtr-board-container");
+        container.dataset.color = order > 0 ? "black" : "red";
 
         for (const space of document.querySelectorAll(".qtr-board-space")) {
             space.addEventListener("click", (event) => {
@@ -58,12 +174,21 @@ define([
         }
 
         for (const {suit, value, x, y} of data.pieces) {
-            const space = document.getElementById(`qtr-board-space-${x}-${y}`);
-            const playerClass = (parseInt(suit) & 0x2) === 0 ?
-                "qtr-red-player" : "qtr-black-player";
-            const content = `${pieceValues[value]}<br>${suitValues[suit]}`;
-            const piece = `<div id="qtr-piece-${suit}-${value}" class="qtr-piece ${playerClass}">${content}</div>`;
-            dojo.place(piece, space);
+            const space = document.getElementById(
+                `qtr-board-space-${x}-${y}`);
+            space.innerHTML = createPiece(suit, value);
+        }
+
+        for (const suit of Object.keys(pieceSuits)) {
+            for (const value of Object.keys(pieceValues)) {
+                const id = `qtr-piece-${suit}-${value}`
+                if (!document.getElementById(id)) {
+                    const element = document.createElement("div");
+                    document.querySelector(`.qtr-captures[data-color=${getPlayerColor(suit)}]`)
+                        .appendChild(element);
+                    element.outerHTML = createPiece(suit, value);
+                }
+            }
         }
 
         this.setupNotifications();
@@ -83,7 +208,12 @@ define([
         console.log(`Leaving state: ${stateName}`);
 
         switch (stateName) {
-
+            case "clientMove":
+                this.selectedPiece.classList.remove("qtr-selected");
+                for (const space of document.querySelectorAll(".qtr-selectable")) {
+                    space.classList.remove("qtr-selectable");
+                }
+                break;
         }
     },
 
@@ -94,9 +224,15 @@ define([
             switch (stateName) {
                 case 'setup':
                     this.addActionButton('qtr-deploy', _("Deploy pieces"), event => {
-                        dojo.stopEvent(event);
+                        event.stopPropagation();
                         this.deployPieces();
                     });
+                    break;
+                case 'clientMove':
+                    this.addActionButton('qtr-cancel', _("Cancel"), event => {
+                        event.stopPropagation()
+                        this.restoreServerGameState();
+                    }, null, null, "gray");
             }
         } else {
             switch (stateName) {
@@ -104,7 +240,7 @@ define([
                     this.addActionButton('qtr-cancel', _("Cancel"), event => {
                         dojo.stopEvent(event);
                         this.cancelDeploy();
-                    }, null, null, "grey");
+                    }, null, null, "gray");
             }
         }
     },
@@ -113,6 +249,37 @@ define([
         console.log(`Space click (${x}, ${y})`);
         if (this.checkAction("deploy", true)) {
             space.classList.toggle("qtr-selected");
+        } else if (this.checkAction("move", true)) {
+            const piece = space.firstChild;
+            if (piece) {
+                piece.classList.add("qtr-selected");
+                this.selectedPiece = piece;
+                this.paths = prepareMove(
+                    space.dataset.x,
+                    space.dataset.y,
+                    piece.dataset.color,
+                    piece.dataset.value);
+
+                this.setClientState("clientMove", {
+                    descriptionmyturn: _("${you} must select the destination space"),
+                    possibleactions: ["clientMove"]
+                })
+            }
+        } else if (this.checkAction("clientMove", true)) {
+            if (space.classList.contains("qtr-selectable")) {
+                const piece = document.querySelector(".qtr-piece.qtr-selected");
+                const sourceSpace = piece.parentElement;
+                const path = this.paths.filter(p =>
+                    p.space.x === x && p.space.y === y)[0];
+
+                this.ajaxcall("/quattuorreges/quattuorreges/move.html", {
+                    x: sourceSpace.dataset.x,
+                    y: sourceSpace.dataset.y,
+                    steps: path.steps.join(","),
+                    retreat: false,
+                    lock: true
+                }, () => {});
+            }
         }
     },
 
@@ -133,7 +300,89 @@ define([
         }, () => {});
     },
 
+    animateTranslation(node, startRect) {
+        const endRect = node.getBoundingClientRect();
+        const [dX, dY] = [
+            endRect.left - startRect.left,
+            endRect.top - startRect.top
+        ];
+
+        if (this.useOffsetAnimation) {
+            node.style.offsetPath =
+                `path("M 0 0 Q ${-dX / 2 - dY / 8} ${-dY / 2 + dX / 8} ${-dX} ${-dY}")`;
+            node.classList.add("qtr-moving");
+
+            node.addEventListener("animationend", () => {
+            }, {once: true});
+        } else {
+            node.style.transform = `translate(${-dX}px, ${-dY}px)`;
+            node.classList.add("qtr-moving-simple");
+        }
+
+        node.addEventListener("animationend", () => {
+            if (this.useOffsetAnimation) {
+                node.classList.remove("qtr-moving");
+                node.style.offsetPath = "unset";
+            } else {
+                node.classList.remove("qtr-moving-simple");
+                node.style.transform = "none";
+            }
+        }, {once: true});
+    },
+
     setupNotifications() {
         console.log("notifications subscriptions setup");
+        dojo.subscribe("move", this, (data) => {
+            console.log(data.args);
+            function argsToPiece(name) {
+                if (name in data.args) {
+                    [suit, value] = data.args[name].split(",");
+                    return document.getElementById(`qtr-piece-${suit}-${value}`);
+                }
+            }
+            const movedPiece = argsToPiece("movedPiece");
+            const capturedPiece = argsToPiece("capturedPiece");
+            if (capturedPiece) {
+                const rect = capturedPiece.getBoundingClientRect();
+                const space = document.querySelector(
+                    `.qtr-captures[data-color="${capturedPiece.dataset.color}"]`)
+                space.appendChild(capturedPiece);
+                //setTimeout(() => {
+                    this.animateTranslation(capturedPiece, rect);
+                //}, 0);
+            }
+            const rect = movedPiece.getBoundingClientRect();
+            const space = document.getElementById(
+                `qtr-board-space-${data.args.x}-${data.args.y}`)
+            space.appendChild(movedPiece);
+            //setTimeout(() => {
+                this.animateTranslation(movedPiece, rect);
+            //}, 0);
+        });
+    },
+
+    formatPieceIcon(suit, value) {
+        const content = `${pieceValues[value]}<br>${pieceSuits[suit]}`;
+        return `<div class="qtr-piece qtr-piece-icon" 
+            data-color="${getPlayerColor(suit)}"
+            data-value="${value}">${content}</div>`;
+    },
+
+    format_string_recursive(log, args) {
+        if (args && !("substitutionComplete" in args)) {
+            args.substitutionComplete = true;
+            const formatters = {
+                piece: this.formatPieceIcon,
+            };
+            for (const iconType of Object.keys(formatters)) {
+                const icons = Object.keys(args).filter(name => name.startsWith(`${iconType}Icon`));
+
+                for (const icon of icons) {
+                    const values = args[icon].toString().split(",");
+                    args[icon] = formatters[iconType].call(this, ...values);
+                }
+            }
+        }
+        return this.inherited({callee: this.format_string_recursive}, arguments);
     }
 }));
