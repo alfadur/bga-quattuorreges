@@ -72,10 +72,10 @@ $machinestates = [
     State::NEXT_TURN => [
         Fsm::NAME => 'nextTurn',
         Fsm::TYPE => FsmType::GAME,
+        Fsm::PROGRESSION => true,
         Fsm::ACTION => 'stNextTurn',
         Fsm::TRANSITIONS => [
             'move' => State::MOVE,
-            'moveAce' => State::MOVE_ACE,
             'end' => State::GAME_END
         ],
     ],
@@ -85,17 +85,20 @@ $machinestates = [
         Fsm::TYPE => FsmType::SINGLE_PLAYER,
         Fsm::DESCRIPTION => clienttranslate('${actplayer} must move a piece'),
         Fsm::OWN_DESCRIPTION => clienttranslate('${you} must move a piece'),
-        Fsm::POSSIBLE_ACTIONS => ['move'],
-        Fsm::TRANSITIONS => ['' => State::NEXT_TURN]
+        Fsm::POSSIBLE_ACTIONS => ['move', 'pass'],
+        Fsm::TRANSITIONS => [
+            'next' => State::NEXT_TURN,
+            'rescue' => State::RESCUE
+        ]
     ],
 
-    State::MOVE_ACE => [
-        Fsm::NAME => 'moveAce',
+    State::RESCUE => [
+        Fsm::NAME => 'rescue',
         Fsm::TYPE => FsmType::SINGLE_PLAYER,
-        Fsm::DESCRIPTION => clienttranslate('${actplayer} must move the Ace once more'),
-        Fsm::OWN_DESCRIPTION => clienttranslate('${you} must move the Ace once more'),
-        Fsm::POSSIBLE_ACTIONS => ['moveAce'],
-        Fsm::TRANSITIONS => ['' => State::NEXT_TURN]
+        Fsm::DESCRIPTION => clienttranslate('${actplayer} must select piece(s) to rescue'),
+        Fsm::OWN_DESCRIPTION => clienttranslate('${you} must select piece(s) to rescue'),
+        Fsm::POSSIBLE_ACTIONS => ['rescue', 'pass'],
+        Fsm::TRANSITIONS => ['next' => State::NEXT_TURN]
     ],
 
     State::GAME_END => [

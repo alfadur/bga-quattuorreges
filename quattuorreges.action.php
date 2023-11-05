@@ -43,39 +43,56 @@ class action_quattuorreges extends APP_GameAction
         self::ajaxResponse();
     }
 
-    public function deploy()
+    function pieceList(string $args): array
     {
-        self::setAjaxMode();
-        $args = self::getArg('positions', AT_numberllist, true);
-        $deployments = array_map(
+        return array_map(
             fn($piece) => array_map(
                 fn($value) => (int)$value,
                 explode(',', $piece)),
             explode(';', $args));
-        $this->game->deploy($deployments);
+    }
+
+    public function deploy()
+    {
+        self::setAjaxMode();
+        $args = self::getArg('positions', AT_numberllist, true);
+        $this->game->deploy($this->pieceList($args));
         self::ajaxResponse();
     }
 
     public function move()
     {
         self::setAjaxMode();
-        $pieceId = self::getArg('pieceId', AT_posint, true);
         $x = self::getArg('x', AT_posint, true);
         $y = self::getArg('y', AT_posint, true);
+        $retreat = self::getArg('retreat', AT_bool, true);
         $stepsList = self::getArg('steps', AT_numberllist, true);
-        $steps = array_map(fn($d) => (int)$d, explode(',', $stepsList));
-        $this->game->move($pieceId, $x, $y, $steps);
+        $steps = array_map(
+            fn($d) => (int)$d,
+            explode(',', $stepsList));
+        $this->game->move($x, $y, $steps, $retreat);
         self::ajaxResponse();
     }
 
-    public function moveAce()
+    public function rescue()
     {
         self::setAjaxMode();
-        $x = self::getArg('x', AT_posint, true);
-        $y = self::getArg('y', AT_posint, true);
-        $stepsList = self::getArg('steps', AT_numberllist, true);
-        $steps = array_map(fn($d) => (int)$d, explode(',', $stepsList));
-        $this->game->moveAce($x, $y, $steps);
+        $args = self::getArg('pieces', AT_numberllist, true);
+        $this->game->rescue($this->pieceList($args));
+        self::ajaxResponse();
+    }
+
+    public function pass()
+    {
+        self::setAjaxMode();
+        $this->game->pass();
+        self::ajaxResponse();
+    }
+
+    public function undo()
+    {
+        self::setAjaxMode();
+        $this->game->undo();
         self::ajaxResponse();
     }
 }

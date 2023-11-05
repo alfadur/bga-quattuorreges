@@ -25,7 +25,7 @@ interface State {
     const SETUP = 2;
     const NEXT_TURN = 3;
     const MOVE = 4;
-    const MOVE_ACE = 5;
+    const RESCUE = 5;
 
     const GAME_END = 99;
 }
@@ -34,10 +34,10 @@ interface Globals
 {
     const FIRST_MOVE = 'firstMove';
     const FIRST_MOVE_ID = 10;
-    const REMAINING_MOVES = 'remainingMoves';
-    const REMAINING_MOVES_ID = 11;
-    const REPEATED_ACE = 'repeatedAce';
-    const REPEATED_ACE_ID = 12;
+    const MOVED_SUITS = 'movedSuits';
+    const MOVED_SUITS_ID = 11;
+    const RESCUER = 'rescuer';
+    const RESCUER_ID = 12;
 }
 
 interface HexDirection {
@@ -63,4 +63,11 @@ interface Suit {
     const OWNER_MASK = 0b10;
 }
 
-const DEPLOYMENT_VALUES = [7, 8, 9, 10, 11, 12, 13, 0];
+const BOARD_SIZE = [17, 15];
+
+const PLAYER_BASES = [
+    [[7, 3], [15, 3]],
+    [[8, 11], [16, 11]]
+];
+
+const PIECE_VALUES = [7, 8, 9, 10, 11, 12, 13, 0];

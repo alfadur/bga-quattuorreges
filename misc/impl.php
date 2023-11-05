@@ -3,8 +3,10 @@
 class_alias('QuattuorReges', 'GameImplName');
 
 class GameState {
+    function state_id(): int { return 0; }
     function nextState(string $transition): void {}
     function prevState(string $transition): void {}
+    function jumpToState(int $state): void {}
     function checkPossibleAction(string $action): void {}
     function setAllPlayersMultiactive(): void {}
     function setPlayersMultiactive(array $players, string $stateTransition, bool $overwrite = false): void {}
@@ -32,9 +34,9 @@ class Table {
     static function activeNextPlayer(): void {}
     static function DbQuery(string $query): void {}
     static function DbAffectedRow(): int { return 0; }
-    static function getCollectionFromDb(string $query): array { return []; }
+    static function getCollectionFromDb(string $query, bool $singleColumn = false): array { return []; }
     static function getObjectFromDb(string $query): ?object { return null; }
-    static function getObjectListFromDb(string $query): array { return []; }
+    static function getObjectListFromDb(string $query, bool $singleColumn = false): array { return []; }
     static function getUniqueValueFromDb(string $query): ?string { return null; }
 
     static function initGameStateLabels(array $array): void {}
