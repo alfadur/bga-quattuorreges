@@ -68,7 +68,22 @@
 }
 
 .qtr-piece {
-    height: var(--space-height);
-    aspect-ratio: 62 / 88;
-    background: mediumpurple;
+    --border-size: 3px;
+    height: calc(var(--space-height) - var(--border-size) * 2);
+    aspect-ratio: 62 / 88; /*TODO compatibility*/
+    margin: auto;
+    color: white;
+    border-radius: 2px;
+    border: var(--border-size) solid white;
+    font-size: 26px;
+    line-height: 16px;
+    text-align: center;
+}
+
+.qtr-piece.qtr-red-player {
+    background-color: red;
+}
+
+.qtr-piece.qtr-black-player {
+    background-color: black;
 }

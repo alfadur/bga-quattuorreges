@@ -8,6 +8,24 @@
  * -----
  */
 
+const pieceValues = Object.freeze({
+    "0": "A",
+    "7": "7",
+    "8": "8",
+    "9": "9",
+    "10": "10",
+    "11": "J",
+    "12": "Q",
+    "13": "K"
+});
+
+const suitValues = Object.freeze({
+    "0": "♥",
+    "1": "♦",
+    "2": "♠",
+    "3": "♣",
+})
+
 define([
     "dojo","dojo/_base/declare",
     "ebg/core/gamegui",
@@ -37,6 +55,15 @@ define([
                     parseInt(space.dataset.y)
                 )
             });
+        }
+
+        for (const {suit, value, x, y} of data.pieces) {
+            const space = document.getElementById(`qtr-board-space-${x}-${y}`);
+            const playerClass = (parseInt(suit) & 0x2) === 0 ?
+                "qtr-red-player" : "qtr-black-player";
+            const content = `${pieceValues[value]}<br>${suitValues[suit]}`;
+            const piece = `<div id="qtr-piece-${suit}-${value}" class="qtr-piece ${playerClass}">${content}</div>`;
+            dojo.place(piece, space);
         }
 
         this.setupNotifications();

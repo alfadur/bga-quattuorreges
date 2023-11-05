@@ -80,8 +80,7 @@ class QuattuorReges extends Table
 
         if ((int)$this->gamestate->state_id() !== State::SETUP) {
             $result['pieces'] = self::getObjectListFromDb(
-                'SELECT player_id FROM player',
-                true);
+                'SELECT * FROM piece');
         }
 
         return $result;
