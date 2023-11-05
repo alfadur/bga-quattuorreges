@@ -23,15 +23,14 @@
     flex-shrink: 1;
 }
 
-.qtr-board {
+#qtr-board {
     flex-grow: 0;
     flex-shrink: 0;
-    max-width: 1000px;
     display: flex;
     flex-flow: column nowrap;
 }
 
-.qtr-board.qtr-red-player {
+#qtr-board.qtr-red-player {
     flex-flow: column-reverse nowrap;
 }
 
@@ -53,13 +52,23 @@
 }
 
 .qtr-board-space:hover {
-    background-color: yellow !important;
+    outline-color: yellow
+}
+
+.qtr-board-space.qtr-selected {
+    background-color: green !important;
 }
 
 #qtr-board-space-7-3, #qtr-board-space-15-3 {
-    background: #f008;
+    background-color: #f008;
 }
 
 #qtr-board-space-8-11, #qtr-board-space-16-11 {
-    background: #0008;
+    background-color: #0008;
+}
+
+.qtr-piece {
+    height: var(--space-height);
+    aspect-ratio: 62 / 88;
+    background: mediumpurple;
 }

@@ -75,7 +75,7 @@ const AT_bool = 0;
 const AT_enum = 0;
 const AT_alphanum = 0;
 const AT_alphanum_dash = 0;
-const AT_numberllist = 0;
+const AT_numberlist = 0;
 const AT_base64 = 0;
 const AT_json = 0;
 

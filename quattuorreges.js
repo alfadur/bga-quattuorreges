@@ -20,10 +20,24 @@ define([
     setup(data) {
         console.log("Starting game setup");
 
-        const isBlackPlayer = parseInt(data.players[this.getCurrentPlayerId().toString()].no);
-        document.getElementById("qtr-board").classList.add(
-            isBlackPlayer ? "qtr-black-player" : "qtr-red-player"
+        const playerId = this.getCurrentPlayerId().toString();
+        const order = parseInt(data.players[playerId].no) - 1;
+        const board = document.getElementById("qtr-board");
+        board.dataset.order = order.toString();
+        board.classList.add(
+            order > 0 ? "qtr-black-player" : "qtr-red-player"
         );
+
+        for (const space of document.querySelectorAll(".qtr-board-space")) {
+            space.addEventListener("click", (event) => {
+                event.stopPropagation();
+                this.onSpaceClick(
+                    space,
+                    parseInt(space.dataset.x),
+                    parseInt(space.dataset.y)
+                )
+            });
+        }
 
         this.setupNotifications();
 
@@ -51,8 +65,45 @@ define([
 
         if (this.isCurrentPlayerActive()) {
             switch (stateName) {
+                case 'setup':
+                    this.addActionButton('qtr-deploy', _("Deploy pieces"), event => {
+                        dojo.stopEvent(event);
+                        this.deployPieces();
+                    });
+            }
+        } else {
+            switch (stateName) {
+                case 'setup':
+                    this.addActionButton('qtr-cancel', _("Cancel"), event => {
+                        dojo.stopEvent(event);
+                        this.cancelDeploy();
+                    }, null, null, "grey");
             }
         }
+    },
+
+    onSpaceClick(space, x, y) {
+        console.log(`Space click (${x}, ${y})`);
+        if (this.checkAction("deploy", true)) {
+            space.classList.toggle("qtr-selected");
+        }
+    },
+
+    deployPieces() {
+        const spaces = Array.from(document.querySelectorAll(".qtr-board-space.qtr-selected"));
+        const positions = spaces
+            .map(s => `${s.dataset.x},${s.dataset.y}`)
+            .join(",");
+        this.ajaxcall("/quattuorreges/quattuorreges/deploy.html", {
+            positions,
+            lock: true,
+        }, () => {});
+    },
+
+    cancelDeploy() {
+        this.ajaxcall("/quattuorreges/quattuorreges/cancel.html", {
+            lock: true,
+        }, () => {});
     },
 
     setupNotifications() {

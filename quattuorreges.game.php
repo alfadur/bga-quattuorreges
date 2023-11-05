@@ -128,6 +128,16 @@ class QuattuorReges extends Table
             && $offset <= $x && $x < $offset + $width;
     }
 
+    static function isValidDeploymentSpace(int $x, int $y, int $side): bool
+    {
+        $offset = ($y + 1) >> 1;
+        $width = BOARD_SIZE[0] - ($y & 0x1);
+        $y += $side * (BOARD_SIZE[1] - 1 - 2 * $y);
+
+        return 0 <= $y && $y < BOARD_SIZE[2]
+            && $offset <= $x && $x < $offset + $width;
+    }
+
     static function getRescueCount(int $x, int $y, int $side, int $value): bool
     {
         $lastSpace = BOARD_SIZE[1] - 1;
@@ -154,9 +164,13 @@ class QuattuorReges extends Table
         }
 
         $values = [];
-        $suitOwner = (self::getPlayerNoById($playerId) - 1) << 1;
+        $side = self::getPlayerNoById($playerId) - 1;
+        $suitOwner = $side << 1;
 
         foreach ($deployments as $i => [$x, $y]) {
+            if (!self::isValidDeploymentSpace($x, $y, $side)) {
+                throw new BgaUserException('Invalid space');
+            }
             $suit = $suitOwner + intdiv($i, count(PIECE_VALUES));
             $value = PIECE_VALUES[$i % count(PIECE_VALUES)];
             $values[] = "($suit, $value, $x, $y)";
@@ -339,7 +353,7 @@ class QuattuorReges extends Table
             WHERE value IN (NULL, $king, $ace)
             GROUP BY player_id
             HAVING COUNT(value) = 0
-            SORT BY player_no ASC
+            ORDER BY player_no ASC
             LIMIT 1
             EOF);
 
@@ -360,7 +374,7 @@ class QuattuorReges extends Table
                 AND y = $lastSpace * (player_no - 1) 
             GROUP BY player_id
             HAVING COUNT(value) > 0
-            SORT BY player_no DESC
+            ORDER BY player_no DESC
             LIMIT 1
             EOF);
 

@@ -63,7 +63,7 @@ interface Suit {
     const OWNER_MASK = 0b10;
 }
 
-const BOARD_SIZE = [17, 15];
+const BOARD_SIZE = [17, 15, 6];
 
 const PLAYER_BASES = [
     [[7, 3], [15, 3]],

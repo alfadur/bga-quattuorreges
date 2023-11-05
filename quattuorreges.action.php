@@ -43,20 +43,19 @@ class action_quattuorreges extends APP_GameAction
         self::ajaxResponse();
     }
 
-    function pieceList(string $args): array
+    function parseList(string $args, int $size): array
     {
-        return array_map(
-            fn($piece) => array_map(
-                fn($value) => (int)$value,
-                explode(',', $piece)),
-            explode(';', $args));
+        $values = array_map(
+            fn($value) => (int)$value,
+            explode(',', $args));
+        return $size > 1 ? array_chunk($values, $size) : $values;
     }
 
     public function deploy()
     {
         self::setAjaxMode();
-        $args = self::getArg('positions', AT_numberllist, true);
-        $this->game->deploy($this->pieceList($args));
+        $args = self::getArg('positions', AT_numberlist, true);
+        $this->game->deploy($this->parseList($args, 2));
         self::ajaxResponse();
     }
 
@@ -66,19 +65,16 @@ class action_quattuorreges extends APP_GameAction
         $x = self::getArg('x', AT_posint, true);
         $y = self::getArg('y', AT_posint, true);
         $retreat = self::getArg('retreat', AT_bool, true);
-        $stepsList = self::getArg('steps', AT_numberllist, true);
-        $steps = array_map(
-            fn($d) => (int)$d,
-            explode(',', $stepsList));
-        $this->game->move($x, $y, $steps, $retreat);
+        $steps = self::getArg('steps', AT_numberlist, true);
+        $this->game->move($x, $y, $this->parseList($steps, 1), $retreat);
         self::ajaxResponse();
     }
 
     public function rescue()
     {
         self::setAjaxMode();
-        $args = self::getArg('pieces', AT_numberllist, true);
-        $this->game->rescue($this->pieceList($args));
+        $args = self::getArg('pieces', AT_numberlist, true);
+        $this->game->rescue($this->parseList($args, 3));
         self::ajaxResponse();
     }
 
