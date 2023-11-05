@@ -3,7 +3,7 @@
 class_alias('QuattuorReges', 'GameImplName');
 
 class GameState {
-    function state_id(): int { return 0; }
+    function state_id(): string { return 0; }
     function nextState(string $transition): void {}
     function prevState(string $transition): void {}
     function jumpToState(int $state): void {}
@@ -40,7 +40,7 @@ class Table {
     static function getUniqueValueFromDb(string $query): ?string { return null; }
 
     static function initGameStateLabels(array $array): void {}
-    static function setInitialGameStateValue(string $name, int $value): void {}
+    static function setGameStateInitialValue(string $name, int $value): void {}
     static function incGameStateValue(string $name, int $value): void {}
     static function setGameStateValue(string $name, int $value): void {}
     static function getGameStateValue(string $name): int { return 0; }

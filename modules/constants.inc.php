@@ -71,3 +71,5 @@ const PLAYER_BASES = [
 ];
 
 const PIECE_VALUES = [7, 8, 9, 10, 11, 12, 13, 0];
+
+const WINNING_VALUES = [12, 13, 0];

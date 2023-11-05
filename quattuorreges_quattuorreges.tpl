@@ -1,11 +1,17 @@
 {OVERALL_GAME_HEADER}
 
 <div id="qtr-board-container">
+    <div class="qtr-captures"></div>
     <div id="qtr-board">
-        <!-- BEGIN hex -->
-        <div id="qtr-hex-{X}-{Y}" class="qtr-hex qtr-hex-{SIDE}" style="left: {CX}; top: {CY}"></div>
-        <!-- END hex -->
+        <!-- BEGIN row -->
+        <div class="qtr-board-row">
+            <!-- BEGIN space -->
+            <div id="qtr-board-space-{X}-{Y}" class="qtr-board-space"></div>
+            <!-- END space -->
+        </div>
+        <!-- END row -->
     </div>
+    <div class="qtr-captures"></div>
 </div>
 
 <script type="text/javascript">

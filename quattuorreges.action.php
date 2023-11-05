@@ -31,7 +31,7 @@ class action_quattuorreges extends APP_GameAction
             $this->view = 'common_notifwindow';
             $this->viewArgs['table'] = self::getArg('table', AT_posint, true);
         } else {
-            $this->view = 'hamletthevillagebuildinggame_hamletthevillagebuildinggame';
+            $this->view = 'quattuorreges_quattuorreges';
             self::trace( 'Complete reinitialization of board game' );
         }
     }

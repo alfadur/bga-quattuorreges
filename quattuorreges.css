@@ -9,34 +9,57 @@
  */
 
 :root {
-    --hex-width: 120px;
-    --hex-height: 102px;
+    --space-width: 40px;
+    --space-height: 40px;
 }
 
 .qtr-board-container {
     display: flex;
+    flex-flow: row nowrap;
     justify-content: center;
 }
 
-.qtr-board {
-    max-width: 1000px;
+.qtr-captures {
     flex-shrink: 1;
 }
 
-.qtr-hex {
-    width: var(--hex-width);
-    height: var(--hex-height);
-    clip-path: polygon(0 50%, 25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%);
+.qtr-board {
+    flex-grow: 0;
+    flex-shrink: 0;
+    max-width: 1000px;
+    display: flex;
+    flex-flow: column nowrap;
 }
 
-.qtr-hex:hover {
+.qtr-board.qtr-red-player {
+    flex-flow: column-reverse nowrap;
+}
+
+.qtr-board-row {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: center;
+}
+
+.qtr-board.qtr-black-player .qtr-board-row {
+    flex-flow: row-reverse nowrap;
+}
+
+.qtr-board-space {
+    width: var(--space-width);
+    height: var(--space-height);
+    outline: dashed #715b40 2px;
+    margin: 1px;
+}
+
+.qtr-board-space:hover {
     background-color: yellow !important;
 }
 
-.qtr-hex-red {
-    background-color: red;
+#qtr-board-space-7-3, #qtr-board-space-15-3 {
+    background: #f008;
 }
 
-.qtr-hex-black {
-    background-color: black;
+#qtr-board-space-8-11, #qtr-board-space-16-11 {
+    background: #0008;
 }

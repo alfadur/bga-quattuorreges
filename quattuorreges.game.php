@@ -26,9 +26,9 @@ class QuattuorReges extends Table
     {
         parent::__construct();
         self::initGameStateLabels([
-            Globals::FIRST_MOVE, Globals::FIRST_MOVE_ID,
-            Globals::MOVED_SUITS, Globals::MOVED_SUITS_ID,
-            Globals::RESCUER, Globals::RESCUER_ID,
+            Globals::FIRST_MOVE => Globals::FIRST_MOVE_ID,
+            Globals::MOVED_SUITS => Globals::MOVED_SUITS_ID,
+            Globals::RESCUER => Globals::RESCUER_ID,
         ]);
     }
 
@@ -67,20 +67,19 @@ class QuattuorReges extends Table
         ];
 
         foreach ($settings as [$name, $value]) {
-            self::setInitialGameStateValue($name, $value);
+            self::setGameStateInitialValue($name, $value);
         }
     }
 
     protected function getAllDatas()
     {
         $result = [
-            'players' => self::getObjectListFromDb(
-                'SELECT player_id FROM player',
-                true)
+            'players' => self::getCollectionFromDb(
+                'SELECT player_id AS id, player_score AS score, player_color AS color, player_no AS no FROM player')
         ];
 
-        if ($this->gamestate->state_id() !== State::SETUP) {
-            $result['players'] = self::getObjectListFromDb(
+        if ((int)$this->gamestate->state_id() !== State::SETUP) {
+            $result['pieces'] = self::getObjectListFromDb(
                 'SELECT player_id FROM player',
                 true);
         }
@@ -129,15 +128,18 @@ class QuattuorReges extends Table
             && $offset <= $x && $x < $offset + $width;
     }
 
-    static function getRescueCount(int $x, int $y, int $side): bool
+    static function getRescueCount(int $x, int $y, int $side, int $value): bool
     {
         $lastSpace = BOARD_SIZE[1] - 1;
         if ($y === $lastSpace * $side) {
-            return 2;
-        }
-        foreach (PLAYER_BASES[$side] as [$sx, $sy]) {
-            if ($sx === $x && $sy === $y) {
-                return 1;
+            if (!in_array($value, WINNING_VALUES, true)) {
+                return 2;
+            }
+        } else {
+            foreach (PLAYER_BASES[$side] as [$sx, $sy]) {
+                if ($sx === $x && $sy === $y) {
+                    return 1;
+                }
             }
         }
         return 0;
@@ -292,7 +294,7 @@ class QuattuorReges extends Table
 
         $values = [];
         foreach ($pieces as [$value, $suit, $baseIndex]) {
-            if (!in_array($value, PIECE_VALUES)) {
+            if (!in_array($value, PIECE_VALUES, true)) {
                 throw new BgaException("Invalid piece value");
             }
             if (($suit & Suit::OWNER_MASK) !== ($side << 1)) {

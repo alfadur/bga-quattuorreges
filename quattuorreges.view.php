@@ -35,10 +35,18 @@ class view_quattuorreges_quattuorreges extends game_view
     }
     
   	function build_page($viewArgs)
-  	{		
-  	    // Get players & players number
-        $players = $this->game->loadPlayersBasicInfos();
-
-        $this->page->begin_block('quattuorreges_quattuorreges', 'hex');
+  	{
+        $this->page->begin_block('quattuorreges_quattuorreges', 'space');
+        $this->page->begin_block('quattuorreges_quattuorreges', 'row');
+        for ($y = 0; $y < BOARD_SIZE[1]; ++$y) {
+            $this->page->reset_subblocks('space');
+            for ($x = 0; $x < BOARD_SIZE[0] - ($y & 0x1); ++$x) {
+                $this->page->insert_block('space', [
+                    'X' => $x + (($y + 1) >> 1),
+                    'Y' => $y
+                ]);
+            }
+            $this->page->insert_block('row', []);
+        }
   	}
 }

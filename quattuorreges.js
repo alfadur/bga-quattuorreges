@@ -20,9 +20,10 @@ define([
     setup(data) {
         console.log("Starting game setup");
 
-        for (const player_id of Object.keys(data.players)) {
-            const player = data.players[player_id];
-        }
+        const isBlackPlayer = parseInt(data.players[this.getCurrentPlayerId().toString()].no);
+        document.getElementById("qtr-board").classList.add(
+            isBlackPlayer ? "qtr-black-player" : "qtr-red-player"
+        );
 
         this.setupNotifications();
 
