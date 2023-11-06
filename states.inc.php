@@ -92,6 +92,7 @@ $machinestates = [
         Fsm::TYPE => FsmType::SINGLE_PLAYER,
         Fsm::DESCRIPTION => clienttranslate('${actplayer} must move a piece'),
         Fsm::OWN_DESCRIPTION => clienttranslate('${you} must move a piece'),
+        Fsm::ARGUMENTS => 'argMove',
         Fsm::POSSIBLE_ACTIONS => ['move', 'pass'],
         Fsm::TRANSITIONS => [
             'next' => State::NEXT_TURN,

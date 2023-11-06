@@ -462,6 +462,12 @@ class QuattuorReges extends Table
         $this->gamestate->nextState('move');
     }
 
+    function argMove(): array {
+        return [
+            'movedSuits' => self::getGameStateValue(Globals::MOVED_SUITS)
+        ];
+    }
+
 
     function zombieTurn($state, $activePlayer)
     {

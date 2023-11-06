@@ -63,6 +63,7 @@ function createPiece(suit, value) {
     return `<div id="qtr-piece-${suit}-${value}"
         class="qtr-piece" 
         data-color="${getPlayerColor(suit)}"
+        data-suit="${suit}"
         data-value="${value}">${content}</div>`;
 }
 
@@ -216,16 +217,21 @@ define([
         console.log("Ending game setup");
     },
 
-    onEnteringState(stateName, args) {
+    onEnteringState(stateName, state) {
         console.log(`Entering state: ${stateName}`);
 
         if (this.isCurrentPlayerActive()) {
             switch (stateName) {
                 case "move":
+                    const movedSuits = parseInt(state.args.movedSuits);
+                    console.log(movedSuits);
                     const pieces = document.querySelectorAll(
                         `.qtr-board-space .qtr-piece[data-color="${this.playerColor}"]`);
                     for (const piece of pieces) {
-                        piece.parentElement.classList.add("qtr-selectable");
+                        const suitBit = 0x1 << (parseInt(piece.dataset.suit) & 0x1);
+                        if ((movedSuits & suitBit) === 0) {
+                            piece.parentElement.classList.add("qtr-selectable");
+                        }
                     }
                     break;
                 case "clientMove":
@@ -275,7 +281,7 @@ define([
                     break;
                 case "clientMove":
                     this.addActionButton("qtr-cancel", _("Cancel"), event => {
-                        event.stopPropagation()
+                        event.stopPropagation();
                         this.restoreServerGameState();
                     }, null, null, "gray");
             }
