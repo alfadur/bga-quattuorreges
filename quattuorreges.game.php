@@ -506,6 +506,7 @@ class QuattuorReges extends Table
         if ($isFirstMove) {
             if ($movedSuits) {
                 self::setGameStateValue(Globals::FIRST_MOVE, 0);
+                self::setGameStateValue(Globals::MOVED_SUITS, 0);
             }
             self::activeNextPlayer();
         } else if ($movedSuits === 0b11) {
