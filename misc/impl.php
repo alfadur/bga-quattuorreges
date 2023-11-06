@@ -44,7 +44,7 @@ class Table {
     static function setGameStateInitialValue(string $name, int $value): void {}
     static function incGameStateValue(string $name, int $value): void {}
     static function setGameStateValue(string $name, int $value): void {}
-    static function getGameStateValue(string $name): int { return 0; }
+    static function getGameStateValue(string $name): string { return ''; }
     static function checkAction(string $action): void {}
     static function notifyAllPlayers(string $name, string $text, array $args): void {}
     static function notifyPlayers(string $playerId, string $name, string $text, array $args): void {}

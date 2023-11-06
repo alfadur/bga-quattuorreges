@@ -29,6 +29,11 @@ const pieceSuits = Object.freeze({
     "3": "♣",
 });
 
+const playerBases = {
+    "red": ["qtr-board-space-7-3", "qtr-board-space-15-3"],
+    "black": ["qtr-board-space-8-11", "qtr-board-space-16-11"]
+}
+
 const moveDirections = Object.freeze([[1, 0], [1, 1], [0, 1], [-1, 0], [-1, -1], [0, -1]]
     .map(([x, y]) => Object.freeze({x, y})));
 
@@ -36,6 +41,17 @@ function clearTag(tag) {
     for (const element of document.querySelectorAll(`.${tag}`)) {
         element.classList.remove(tag);
     }
+}
+
+function getFreeBases(playerColor) {
+    return playerBases[playerColor]
+        .map(id => document.getElementById(id))
+        .filter(base => base.children.length === 0);
+}
+
+function getCapturedPieces(playerColor) {
+    return document.querySelectorAll(
+        `.qtr-captures[data-color="${playerColor}"] .qtr-piece`)
 }
 
 function getPieceRange(pieceValue) {
@@ -211,6 +227,10 @@ define([
             });
         }
 
+        for (const color of Object.keys(playerBases)) {
+            playerBases[color].forEach((id, index) =>
+                document.getElementById(id).dataset.baseIndex = index.toString());
+        }
 
         this.setupNotifications();
 
@@ -222,7 +242,7 @@ define([
 
         if (this.isCurrentPlayerActive()) {
             switch (stateName) {
-                case "move":
+                case "move": {
                     const movedSuits = parseInt(state.args.movedSuits);
                     console.log(movedSuits);
                     const pieces = document.querySelectorAll(
@@ -234,7 +254,8 @@ define([
                         }
                     }
                     break;
-                case "clientMove":
+                }
+                case "clientMove": {
                     const space = this.selectedPiece.parentElement;
                     this.paths = prepareMove(
                         space.dataset.x,
@@ -242,6 +263,32 @@ define([
                         this.selectedPiece.dataset.color,
                         this.selectedPiece.dataset.value);
                     break;
+                }
+                case "rescue": {
+                    console.log(state.args);
+                    this.rescueCount = Math.min(
+                        parseInt(state.args.rescueCount),
+                        getFreeBases(this.playerColor).length,
+                        getCapturedPieces(this.playerColor).length);
+                    this.rescuedPieces = [];
+                    this.setClientState("clientRescuePiece", {
+                        descriptionmyturn: _("${you} must select a piece to rescue"),
+                        possibleactions: ["clientRescuePiece"]
+                    });
+                    break;
+                }
+                case "clientRescuePiece": {
+                    for (const piece of getCapturedPieces(this.playerColor)) {
+                        piece.classList.add("qtr-selectable");
+                    }
+                    break;
+                }
+                case "clientRescueBase": {
+                    for (const base of getFreeBases(this.playerColor)) {
+                        base.classList.add("qtr-selectable");
+                    }
+                    break;
+                }
             }
         }
     },
@@ -250,15 +297,20 @@ define([
         console.log(`Leaving state: ${stateName}`);
 
         switch (stateName) {
-            case "deploy":
+            case "setup":
             case "clientMove":
+            case "clientRescueBase": {
                 if (this.unselectPiece()) {
+
                     clearTag("qtr-selectable");
                 }
                 break;
+            }
             case "move":
+            case "clientRescuePiece": {
                 clearTag("qtr-selectable");
                 break;
+            }
         }
     },
 
@@ -267,7 +319,7 @@ define([
 
         if (this.isCurrentPlayerActive()) {
             switch (stateName) {
-                case "setup":
+                case "setup": {
                     const spaces = document.querySelectorAll(
                         `.qtr-board-space[data-color="${this.playerColor}"]`);
                     for (const space of spaces) {
@@ -279,21 +331,38 @@ define([
                     });
                     this.updateDeployment();
                     break;
-                case "clientMove":
+                }
+
+                case "move":
+                case "clientRescuePiece":
+                case "clientRescueBase": {
+                    this.addActionButton("qtr-pass", _("Pass"), event => {
+                        event.stopPropagation();
+                        if (stateName !== "move" && this.rescuedPieces.length > 0) {
+                            this.rescuePieces(this.rescuedPieces)
+                        } else {
+                            this.pass();
+                        }
+                    }, null, null, "gray");
+                    break;
+                }
+                case "clientMove": {
                     this.addActionButton("qtr-cancel", _("Cancel"), event => {
                         event.stopPropagation();
                         this.restoreServerGameState();
                     }, null, null, "gray");
+                }
             }
         } else if (!this.isSpectator) {
             switch (stateName) {
-                case "setup":
+                case "setup": {
                     this.unselectPiece();
                     clearTag("qtr-selectable");
                     this.addActionButton("qtr-cancel", _("Cancel"), event => {
                         dojo.stopEvent(event);
                         this.cancelDeploy();
                     }, null, null, "gray");
+                }
             }
         }
     },
@@ -318,12 +387,11 @@ define([
     },
 
     updateDeployment() {
-        const captures = document.querySelector(
-            `.qtr-captures[data-color="${this.playerColor}"]`);
-        const hasPieces = captures.children.length > 0;
+        const captures = getCapturedPieces(this.playerColor);
+        const hasPieces = captures.length > 0;
 
         if (hasPieces) {
-            this.selectPiece(captures.children[0]);
+            this.selectPiece(captures[0]);
         } else if (!this.selectedPiece) {
             this.selectPiece(document.querySelector(
                 `.qtr-piece[data-color="${this.playerColor}"]`));
@@ -331,6 +399,25 @@ define([
 
         document.getElementById("qtr-deploy").classList.toggle(
             "disabled", hasPieces);
+    },
+
+    addRescuedPiece(piece) {
+        const freeBases = getFreeBases(this.playerColor);
+        if (freeBases.length > 1) {
+            this.selectPiece(piece);
+            this.setClientState("clientRescueBase", {
+                descriptionmyturn: _("${you} must select a base for the piece"),
+                possibleactions: ["clientRescueBase"]
+            });
+        } else {
+            this.rescuedPieces.push({
+                suit: piece.dataset.suit,
+                value: piece.dataset.value,
+                base: freeBases[0].dataset.baseIndex
+            });
+            this.animateTranslation(piece, freeBases[0]);
+            this.rescuePieces(this.rescuedPieces);
+        }
     },
 
     onSpaceClick(space, x, y) {
@@ -352,7 +439,7 @@ define([
                 this.setClientState("clientMove", {
                     descriptionmyturn: _("${you} must select the destination space"),
                     possibleactions: ["clientMove"]
-                })
+                });
             }
         } else if (this.checkAction("clientMove", true)) {
             if (space.classList.contains("qtr-selectable")) {
@@ -369,11 +456,34 @@ define([
                     lock: true
                 }, () => {});
             }
+        } else if (this.checkAction("clientRescuePiece", true)) {
+            this.addRescuedPiece(space.children[0]);
+        } else if (this.checkAction("clientRescueBase", true)) {
+            this.rescuedPieces.push({
+                suit: this.selectedPiece.dataset.suit,
+                value: this.selectedPiece.dataset.value,
+                base: space.dataset.baseIndex
+            });
+            this.animateTranslation(this.selectedPiece, space);
+            if (--this.rescueCount > 0) {
+                this.setClientState("clientRescuePiece", {
+                    descriptionmyturn: _("${you} must select a piece to rescue"),
+                    possibleactions: ["clientRescuePiece"]
+                });
+            } else {
+                this.rescuePieces(this.rescuedPieces);
+            }
         }
     },
 
     onPieceClick(piece) {
+        if (!piece.classList.contains("qtr-selectable")) {
+            return;
+        }
 
+        if (this.checkAction("clientRescuePiece", true)) {
+            this.addRescuedPiece(piece);
+        }
     },
 
     deployPieces() {
@@ -399,6 +509,22 @@ define([
 
     cancelDeploy() {
         this.ajaxcall("/quattuorreges/quattuorreges/cancel.html", {
+            lock: true,
+        }, () => {});
+    },
+
+    rescuePieces(pieces) {
+        const args = pieces
+            .map(p => `${p.suit},${p.value},${p.base}`)
+            .join(",");
+        this.ajaxcall("/quattuorreges/quattuorreges/rescue.html", {
+            pieces: args,
+            lock: true,
+        }, () => {});
+    },
+
+    pass() {
+        this.ajaxcall("/quattuorreges/quattuorreges/pass.html", {
             lock: true,
         }, () => {});
     },
@@ -444,6 +570,33 @@ define([
     setupNotifications() {
         console.log("notifications subscriptions setup");
 
+        function getPath(data, ...path) {
+            let source = data.args;
+            for (const item of path) {
+                if (item in source) {
+                    source = source[item];
+                } else {
+                    return;
+                }
+            }
+            return source;
+        }
+        function argsToPiece(data, ...path) {
+            const source = getPath(data, ...path);
+            if (source) {
+                const {suit, value} = source;
+                return document.getElementById(`qtr-piece-${suit}-${value}`);
+            }
+        }
+
+        function argsToSpace(data, ...path) {
+            const source = getPath(data, ...path);
+            if (source) {
+                const {x, y} = source;
+                return document.getElementById(`qtr-board-space-${x}-${y}`);
+            }
+        }
+
         dojo.subscribe("deploy", this, (data) => {
             console.log(data.args);
             const moves = [];
@@ -481,14 +634,8 @@ define([
 
         dojo.subscribe("move", this, (data) => {
             console.log(data.args);
-            function argsToPiece(name) {
-                if (name in data.args) {
-                    [suit, value] = data.args[name].split(",");
-                    return document.getElementById(`qtr-piece-${suit}-${value}`);
-                }
-            }
-            const movedPiece = argsToPiece("movedPiece");
-            const capturedPiece = argsToPiece("capturedPiece");
+            const movedPiece = argsToPiece(data, "movedPiece");
+            const capturedPiece = argsToPiece(data, "capturedPiece");
             if (capturedPiece) {
                 const space = document.querySelector(
                     `.qtr-captures[data-color="${capturedPiece.dataset.color}"]`)
@@ -497,14 +644,38 @@ define([
             const space = document.getElementById(
                 `qtr-board-space-${data.args.x}-${data.args.y}`)
             this.animateTranslation(movedPiece, space);
+
+            this.notifqueue.setSynchronousDuration(500);
+        });
+
+        dojo.subscribe("rescue", this, (data) => {
+            console.log(data.args);
+            const capturedPiece = argsToPiece(data, "capturedPiece");
+            const captures = document.querySelector(`.qtr-captures[data-color="${capturedPiece.dataset.color}"]`);
+            this.animateTranslation(capturedPiece, captures);
+
+            for (let i = 0; i < data.args.rescuedPieces.length; ++i) {
+                const piece = argsToPiece(data, "rescuedPieces", i);
+                const space = argsToSpace(data, "rescuedPieces", i);
+                if (piece.parentElement !== space) {
+                    this.animateTranslation(piece, space);
+                }
+            }
         });
     },
 
-    formatPieceIcon(suit, value) {
-        const content = `${pieceValues[value]}<br>${pieceSuits[suit]}`;
-        return `<div class="qtr-piece qtr-piece-icon" 
-            data-color="${getPlayerColor(suit)}"
-            data-value="${value}">${content}</div>`;
+    formatPieceIcon(...values) {
+        const pieces = [];
+        while (values.length >= 2) {
+            pieces.push(values.slice(0, 2));
+            values.splice(0, 2);
+        }
+        return pieces.map(([suit, value]) => {
+            const content = `${pieceValues[value]}<br>${pieceSuits[suit]}`;
+            return `<div class="qtr-piece qtr-piece-icon" 
+                data-color="${getPlayerColor(suit)}"
+                data-value="${value}">${content}</div>`;
+        }).join("");
     },
 
     format_string_recursive(log, args) {

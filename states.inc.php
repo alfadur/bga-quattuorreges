@@ -105,6 +105,7 @@ $machinestates = [
         Fsm::TYPE => FsmType::SINGLE_PLAYER,
         Fsm::DESCRIPTION => clienttranslate('${actplayer} must select piece(s) to rescue'),
         Fsm::OWN_DESCRIPTION => clienttranslate('${you} must select piece(s) to rescue'),
+        Fsm::ARGUMENTS => 'argRescue',
         Fsm::POSSIBLE_ACTIONS => ['rescue', 'pass'],
         Fsm::TRANSITIONS => ['next' => State::NEXT_TURN]
     ],

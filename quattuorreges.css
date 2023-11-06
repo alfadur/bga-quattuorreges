@@ -93,7 +93,7 @@
     text-align: center;
 }
 
-#qtr-board .qtr-piece {
+.qtr-piece:not(.qtr-selectable) {
     pointer-events: none;
 }
 
@@ -105,7 +105,7 @@
     background-color: black;
 }
 
-.qtr-piece.qtr-selected {
+.qtr-piece.qtr-selected, .qtr-piece.qtr-selectable:hover {
     background-color: greenyellow;
 }
 

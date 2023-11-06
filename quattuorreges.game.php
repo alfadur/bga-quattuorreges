@@ -147,21 +147,40 @@ class QuattuorReges extends Table
             && $offset <= $x && $x < $offset + $width;
     }
 
-    static function getRescueCount(int $x, int $y, int $side, int $value): bool
+    static function getRescueCount(int $x, int $y, int $side, int $value): int
     {
         $lastSpace = BOARD_SIZE[1] - 1;
-        if ($y === $lastSpace * $side) {
+        if ($y === $lastSpace * (1 - $side)) {
             if (!in_array($value, WINNING_VALUES, true)) {
                 return 2;
             }
         } else {
-            foreach (PLAYER_BASES[$side] as [$sx, $sy]) {
+            foreach (PLAYER_BASES[(1 - $side)] as [$sx, $sy]) {
                 if ($sx === $x && $sy === $y) {
                     return 1;
                 }
             }
         }
         return 0;
+    }
+
+    static function canRescue(int $side): bool {
+        $checks = [];
+        foreach (PLAYER_BASES[$side] as [$x, $y]) {
+            $checks[] = "x = $x AND y = $y";
+        }
+        $args = implode(' OR ', $checks);
+
+        $ownerMask = Suit::OWNER_MASK;
+        $suitOwner = $side << 1;
+
+        ['bases' => $bases, 'pieces' => $pieces] = self::getObjectFromDb(<<<EOF
+            SELECT 
+                2 - (SELECT COUNT(*) FROM piece WHERE $args) AS bases,
+                (SELECT COUNT(*) FROM piece WHERE (suit & $ownerMask) = $suitOwner) AS pieces
+            EOF);
+
+        return (int)$bases > 0 && (int)$pieces < 2 * count(PIECE_VALUES);
     }
 
     function deploy(array $deployments) {
@@ -265,7 +284,7 @@ class QuattuorReges extends Table
 
         $movedSuitBit = 1 << ((int)$movedPiece['suit'] & (~Suit::OWNER_MASK));
 
-        if (self::getGameStateValue(Globals::MOVED_SUITS) & $movedSuitBit) {
+        if ((int)self::getGameStateValue(Globals::MOVED_SUITS) & $movedSuitBit) {
             throw new BgaUserException('Suit already moved');
         }
 
@@ -298,32 +317,41 @@ class QuattuorReges extends Table
             $ty = $y;
         }
 
-        $rescue = self::getRescueCount($tx, $ty, $side, $movedPiece['value']) > 0;
+        $rescue = self::getRescueCount($tx, $ty, $side, $movedPiece['value']) > 0
+            && self::canRescue($side) > 0;
         if ($rescue) {
-            self::setGameStateValue(Globals::RESCUER, $tx + ($ty << 8));
+            $rescuerValue = $tx + ($ty << 8)
+                + ((int)$movedPiece['suit'] << 16)
+                + ((int)$movedPiece['value'] << 24);
+            self::setGameStateValue(Globals::RESCUER, $rescuerValue);
         }
 
-        if ($capturedPiece === null) {
-            self::notifyAllPlayers('move', '${player_name} moves ${pieceIcon} to (${x},${y})', [
-                'player_name' => self::getActivePlayerName(),
-                'movedPiece' => "$movedPiece[suit],$movedPiece[value]",
-                'x' => $tx,
-                'y' => $ty,
-                'pieceIcon' => "$movedPiece[suit],$movedPiece[value]",
-                'preserve' => ['pieceIcon', 'x', 'y']
-            ]);
-        } else {
-            self::notifyAllPlayers('move', '${player_name} moves ${pieceIcon} to (${x},${y}) and captures ${pieceIconC}', [
-                'player_name' => self::getActivePlayerName(),
-                'movedPiece' => "$movedPiece[suit],$movedPiece[value]",
-                'capturedPiece' => "$capturedPiece[suit],$capturedPiece[value]",
-                'x' => $tx,
-                'y' => $ty,
-                'pieceIcon' => "$movedPiece[suit],$movedPiece[value]",
-                'pieceIconC' => "$capturedPiece[suit],$capturedPiece[value]",
-                'preserve' => ['pieceIcon', 'pieceIconC', 'x', 'y']
-            ]);
+        $message = $capturedPiece ?
+            clienttranslate('${player_name} moves ${pieceIcon} to (${x},${y}) and captures ${pieceIconC}') :
+            clienttranslate('${player_name} moves ${pieceIcon} to (${x},${y})');
+
+        $args = [
+            'player_name' => self::getActivePlayerName(),
+            'movedPiece' => [
+                'suit' => $movedPiece['suit'],
+                'value' => $movedPiece['value']
+            ],
+            'x' => $tx,
+            'y' => $ty,
+            'pieceIcon' => "$movedPiece[suit],$movedPiece[value]",
+            'preserve' => ['pieceIcon', 'x', 'y']
+        ];
+
+        if ($capturedPiece) {
+            $args['capturedPiece'] = [
+                'suit' => $capturedPiece['suit'],
+                'value' => $capturedPiece['value']
+            ];
+            $args['pieceIconC'] = "$capturedPiece[suit],$capturedPiece[value]";
+            $args['preserve'][] = ['pieceIconC'];
         }
+
+        self::notifyAllPlayers('move', $message, $args);
 
         $this->gamestate->nextState($rescue ? 'rescue' : 'next');
     }
@@ -332,34 +360,58 @@ class QuattuorReges extends Table
     {
         self::checkAction('rescue');
 
-        $rescuer = self::getGameStateValue(Globals::RESCUER);
-        $x = $rescuer && 0xFF;
-        $y = ($rescuer >> 8) && 0xFF;
+        $rescuer = (int)self::getGameStateValue(Globals::RESCUER);
+        $x = $rescuer & 0xFF;
+        $y = ($rescuer >> 8) & 0xFF;
+        $rescuerSuit = ($rescuer >> 16) & 0xFF;
+        $rescuerValue = ($rescuer >> 24) & 0xFF;
 
         $side = self::getPlayerNoById(self::getActivePlayerId()) - 1;
-        $count = self::getRescueCount($x, $y, $side);
+        $count = self::getRescueCount($x, $y, $side, -1);
 
         if (count($pieces) === 0 || count($pieces) > $count) {
             throw new BgaUserException('Invalid rescue count');
         }
 
         self::DbQuery(
-            'DELETE FROM piece WHERE x = $x AND $y = $y');
+            "DELETE FROM piece WHERE x = $x AND y = $y");
 
         $values = [];
-        foreach ($pieces as [$value, $suit, $baseIndex]) {
+        $rescues = [];
+        $icons = [];
+
+        foreach ($pieces as [$suit, $value, $baseIndex]) {
             if (!in_array($value, PIECE_VALUES, true)) {
-                throw new BgaException("Invalid piece value");
+                throw new BgaUserException("Invalid piece value");
             }
             if (($suit & Suit::OWNER_MASK) !== ($side << 1)) {
-                throw new BgaException("Invalid piece suit");
+                throw new BgaUserException("Invalid piece suit");
             }
-            [$x, $y] = PLAYER_BASES[$side][$baseIndex];
-            $values[] = "($value, $suit, $x, $y)";
+            [$baseX, $baseY] = PLAYER_BASES[$side][$baseIndex];
+            $values[] = "($value, $suit, $baseX, $baseY)";
+            $rescues[] = [
+                'value' => $value,
+                'suit' => $suit,
+                'x' => $baseX,
+                'y' => $baseY
+            ];
+            $icons[] = "$suit,$value";
         }
 
         $args = implode(',', $values);
         self::DbQuery("INSERT INTO piece(value, suit, x, y) VALUES $args");
+
+        self::notifyAllPlayers('rescue', clienttranslate('${player_name} exchanges ${pieceIcon} for ${pieceIcons}'), [
+            'player_name' => self::getActivePlayerName(),
+            'capturedPiece' => [
+                'suit' => $rescuerSuit,
+                'value' => $rescuerValue
+            ],
+            'rescuedPieces' => $rescues,
+            'pieceIcon' => "$rescuerSuit,$rescuerValue",
+            'pieceIcons' => implode(',', $icons),
+            'preserve' => ['pieceIcon', 'pieceIcons']
+        ]);
 
         $this->gamestate->nextState('');
     }
@@ -368,7 +420,7 @@ class QuattuorReges extends Table
     {
         self::checkAction('pass');
 
-        if ($this->gamestate->state_id() === State::MOVE) {
+        if ((int)$this->gamestate->state_id() === State::MOVE) {
             self::setGameStateValue(Globals::MOVED_SUITS, 0b11);
         }
         $this->gamestate->nextState('next');
@@ -391,7 +443,7 @@ class QuattuorReges extends Table
             SELECT player_id 
             FROM player LEFT JOIN piece 
                 ON player_no = 1 + ((suit & $ownerMask) >> 1)
-            WHERE value IN (NULL, $king, $ace)
+                    AND value in ($king, $ace)        
             GROUP BY player_id
             HAVING COUNT(value) = 0
             ORDER BY player_no ASC
@@ -435,7 +487,7 @@ class QuattuorReges extends Table
     {
         $pieces = self::getObjectListFromDb('SELECT * FROM piece');
         self::notifyAllPlayers('deploy',
-            'Piece positions are revealed',
+            clienttranslate('Piece positions are revealed'),
             ['pieces' => $pieces]);
         $this->gamestate->nextState('');
     }
@@ -447,8 +499,8 @@ class QuattuorReges extends Table
             return;
         }
 
-        $isFirstMove = self::getGameStateValue(Globals::FIRST_MOVE);
-        $movedSuits = self::getGameStateValue(Globals::MOVED_SUITS);
+        $isFirstMove = (int)self::getGameStateValue(Globals::FIRST_MOVE);
+        $movedSuits = (int)self::getGameStateValue(Globals::MOVED_SUITS);
 
         if ($isFirstMove) {
             if ($movedSuits) {
@@ -465,6 +517,20 @@ class QuattuorReges extends Table
     function argMove(): array {
         return [
             'movedSuits' => self::getGameStateValue(Globals::MOVED_SUITS)
+        ];
+    }
+
+    function argRescue(): array {
+        $rescuer = (int)self::getGameStateValue(Globals::RESCUER);
+        $x = $rescuer & 0xFF;
+        $y = ($rescuer >> 8) & 0xFF;
+        $side = self::getPlayerNoById(self::getActivePlayerId()) - 1;
+
+        return [
+            'x' => $x,
+            'y' => $y,
+            'side' => $side,
+            'rescueCount' => self::getRescueCount($x, $y, $side, -1)
         ];
     }
 
