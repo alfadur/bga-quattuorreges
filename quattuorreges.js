@@ -60,6 +60,14 @@ function getPieceRange(pieceValue) {
         pieceValue === 8 ? 4 : 2;
 }
 
+function getPiece(suit, value) {
+    return document.getElementById(`qtr-piece-${suit}-${value}`);
+}
+
+function getSpace(x, y) {
+    return document.getElementById(`qtr-board-space-${x}-${y}`);
+}
+
 function *spacesAround(space) {
     let index = 0;
     for (const {x, y} of moveDirections) {
@@ -210,8 +218,7 @@ define([
 
         for (const suit of Object.keys(pieceSuits)) {
             for (const value of Object.keys(pieceValues)) {
-                const id = `qtr-piece-${suit}-${value}`
-                if (!document.getElementById(id)) {
+                if (!getPiece(suit, value)) {
                     const element = document.createElement("div");
                     document.querySelector(`.qtr-captures[data-color=${getPlayerColor(suit)}]`)
                         .appendChild(element);
@@ -251,8 +258,7 @@ define([
                         const suitBit = 0x1 << (parseInt(piece.dataset.suit) & 0x1);
 
                         if ((movedSuits & suitBit) === 0) {
-                            const king = document.querySelector(
-                                `.qtr-piece[data-suit="${piece.dataset.suit}"][data-value="13"]`);
+                            const king = getPiece(piece.dataset.suit, 13);
 
                             if (king.parentElement.classList.contains("qtr-board-space")
                                 || piece.dataset.value === "0")
@@ -274,6 +280,9 @@ define([
                 }
                 case "rescue": {
                     console.log(state.args);
+                    const space = state.args.rescueSpace;
+                    this.rescuer = getSpace(space.x, space.y).children[0];
+                    console.log("R", this.rescuer);
                     this.rescueCount = Math.min(
                         parseInt(state.args.rescueCount),
                         getFreeBases(this.playerColor).length,
@@ -288,6 +297,10 @@ define([
                 case "clientRescuePiece": {
                     for (const piece of getCapturedPieces(this.playerColor)) {
                         piece.classList.add("qtr-selectable");
+                    }
+                    console.log("P", this.rescuer);
+                    if (this.rescuer) {
+                        this.rescuer.parentElement.classList.add("qtr-selectable");
                     }
                     break;
                 }
@@ -472,6 +485,9 @@ define([
                 base: space.dataset.baseIndex
             });
             this.animateTranslation(this.selectedPiece, space);
+            if (this.selectedPiece === this.rescuer) {
+                this.rescuer = undefined;
+            }
             if (--this.rescueCount > 0) {
                 this.setClientState("clientRescuePiece", {
                     descriptionmyturn: _("${you} must select a piece to rescue"),
@@ -497,9 +513,7 @@ define([
         const spaces = [];
         for (const suit of deploymentSuits) {
             for (const value of deploymentValues) {
-                const space = document
-                    .getElementById(`qtr-piece-${suit}-${value}`)
-                    .parentElement;
+                const space = getPiece(suit, value).parentElement;
                 if (space.classList.contains("qtr-board-space")) {
                     spaces.push(space);
                 }
@@ -592,15 +606,14 @@ define([
             const source = getPath(data, ...path);
             if (source) {
                 const {suit, value} = source;
-                return document.getElementById(`qtr-piece-${suit}-${value}`);
+                return getPiece(suit, value);
             }
         }
 
         function argsToSpace(data, ...path) {
             const source = getPath(data, ...path);
             if (source) {
-                const {x, y} = source;
-                return document.getElementById(`qtr-board-space-${x}-${y}`);
+                return getSpace(source.x, source.y);
             }
         }
 
@@ -609,7 +622,7 @@ define([
             const moves = [];
 
             for (const item of data.args.pieces) {
-                const piece = document.getElementById(`qtr-piece-${item.suit}-${item.value}`);
+                const piece = getPiece(item.suit, item.value);
                 if (!piece.parentElement.classList.contains("qtr-board-space")) {
                     const x = parseInt(item.x);
                     const y = parseInt(item.y);
@@ -658,8 +671,11 @@ define([
         dojo.subscribe("rescue", this, (data) => {
             console.log(data.args);
             const capturedPiece = argsToPiece(data, "capturedPiece");
-            const captures = document.querySelector(`.qtr-captures[data-color="${capturedPiece.dataset.color}"]`);
-            this.animateTranslation(capturedPiece, captures);
+
+            if (capturedPiece.parentElement.dataset.color !== capturedPiece.dataset.color) {
+                const captures = document.querySelector(`.qtr-captures[data-color="${capturedPiece.dataset.color}"]`);
+                this.animateTranslation(capturedPiece, captures);
+            }
 
             for (let i = 0; i < data.args.rescuedPieces.length; ++i) {
                 const piece = argsToPiece(data, "rescuedPieces", i);

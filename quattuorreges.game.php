@@ -528,9 +528,10 @@ class QuattuorReges extends Table
         $side = self::getPlayerNoById(self::getActivePlayerId()) - 1;
 
         return [
-            'x' => $x,
-            'y' => $y,
-            'side' => $side,
+            'rescueSpace' => [
+                'x' => $x,
+                'y' => $y,
+            ],
             'rescueCount' => self::getRescueCount($x, $y, $side, -1)
         ];
     }
