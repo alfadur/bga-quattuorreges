@@ -91,6 +91,9 @@
     font-size: 26px;
     line-height: 16px;
     text-align: center;
+}
+
+#qtr-board .qtr-piece {
     pointer-events: none;
 }
 

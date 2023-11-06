@@ -81,6 +81,16 @@ class QuattuorReges extends Table
         if ((int)$this->gamestate->state_id() !== State::SETUP) {
             $result['pieces'] = self::getObjectListFromDb(
                 'SELECT * FROM piece');
+        } else if (!self::isSpectator()) {
+            $playerId = self::getCurrentPlayerId();
+            $side = self::getPlayerNoById($playerId) - 1;
+            $suitOwner = $side << 1;
+            $ownerMask = Suit::OWNER_MASK;
+
+            $result['pieces'] = self::getObjectListFromDb(
+                "SELECT * FROM piece WHERE (suit & $ownerMask) = $suitOwner");
+        } else {
+            $result['pieces'] = [];
         }
 
         return $result;
@@ -419,6 +429,15 @@ class QuattuorReges extends Table
         }
 
         return false;
+    }
+
+    function stReveal(): void
+    {
+        $pieces = self::getObjectListFromDb('SELECT * FROM piece');
+        self::notifyAllPlayers('deploy',
+            'Piece positions are revealed',
+            ['pieces' => $pieces]);
+        $this->gamestate->nextState('');
     }
 
     function stNextTurn(): void

@@ -6,7 +6,7 @@
         <!-- BEGIN row -->
         <div class="qtr-board-row">
             <!-- BEGIN space -->
-            <div id="qtr-board-space-{X}-{Y}" class="qtr-board-space" data-x="{X}" data-y="{Y}"></div>
+            <div id="qtr-board-space-{X}-{Y}" class="qtr-board-space" data-x="{X}" data-y="{Y}" data-color="{COLOR}"></div>
             <!-- END space -->
         </div>
         <!-- END row -->

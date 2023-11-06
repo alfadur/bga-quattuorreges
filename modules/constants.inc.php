@@ -23,9 +23,10 @@ interface State {
     const GAME_START = 1;
 
     const SETUP = 2;
-    const NEXT_TURN = 3;
-    const MOVE = 4;
-    const RESCUE = 5;
+    const REVEAL = 3;
+    const NEXT_TURN = 4;
+    const MOVE = 5;
+    const RESCUE = 6;
 
     const GAME_END = 99;
 }

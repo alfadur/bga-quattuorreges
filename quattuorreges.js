@@ -8,15 +8,18 @@
  * -----
  */
 
+const deploymentValues = [7, 8, 9, 10, 11, 12, 13, 0];
+const deploymentSuits = [0, 1, 2, 3];
+
 const pieceValues = Object.freeze({
-    "0": "A",
     "7": "7",
     "8": "8",
     "9": "9",
     "10": "10",
     "11": "J",
     "12": "Q",
-    "13": "K"
+    "13": "K",
+    "0": "A",
 });
 
 const pieceSuits = Object.freeze({
@@ -28,6 +31,12 @@ const pieceSuits = Object.freeze({
 
 const moveDirections = Object.freeze([[1, 0], [1, 1], [0, 1], [-1, 0], [-1, -1], [0, -1]]
     .map(([x, y]) => Object.freeze({x, y})));
+
+function clearTag(tag) {
+    for (const element of document.querySelectorAll(`.${tag}`)) {
+        element.classList.remove(tag);
+    }
+}
 
 function getPieceRange(pieceValue) {
     pieceValue = parseInt(pieceValue);
@@ -158,9 +167,12 @@ define([
         console.log("Starting game setup");
 
         const playerId = this.getCurrentPlayerId().toString();
-        const order = parseInt(data.players[playerId].no) - 1;
+        const order = playerId in data.players ?
+            parseInt(data.players[playerId].no) - 1 :
+            0;
         const container = document.getElementById("qtr-board-container");
-        container.dataset.color = order > 0 ? "black" : "red";
+        this.playerColor = order > 0 ? "black" : "red";
+        container.dataset.color = this.playerColor;
 
         for (const space of document.querySelectorAll(".qtr-board-space")) {
             space.addEventListener("click", (event) => {
@@ -191,6 +203,14 @@ define([
             }
         }
 
+        for (const piece of document.querySelectorAll(".qtr-piece")) {
+            piece.addEventListener("click", (event) => {
+                event.stopPropagation();
+                this.onPieceClick(piece);
+            });
+        }
+
+
         this.setupNotifications();
 
         console.log("Ending game setup");
@@ -199,8 +219,24 @@ define([
     onEnteringState(stateName, args) {
         console.log(`Entering state: ${stateName}`);
 
-        switch (stateName) {
-
+        if (this.isCurrentPlayerActive()) {
+            switch (stateName) {
+                case "move":
+                    const pieces = document.querySelectorAll(
+                        `.qtr-board-space .qtr-piece[data-color="${this.playerColor}"]`);
+                    for (const piece of pieces) {
+                        piece.parentElement.classList.add("qtr-selectable");
+                    }
+                    break;
+                case "clientMove":
+                    const space = this.selectedPiece.parentElement;
+                    this.paths = prepareMove(
+                        space.dataset.x,
+                        space.dataset.y,
+                        this.selectedPiece.dataset.color,
+                        this.selectedPiece.dataset.value);
+                    break;
+            }
         }
     },
 
@@ -208,11 +244,14 @@ define([
         console.log(`Leaving state: ${stateName}`);
 
         switch (stateName) {
+            case "deploy":
             case "clientMove":
-                this.selectedPiece.classList.remove("qtr-selected");
-                for (const space of document.querySelectorAll(".qtr-selectable")) {
-                    space.classList.remove("qtr-selectable");
+                if (this.unselectPiece()) {
+                    clearTag("qtr-selectable");
                 }
+                break;
+            case "move":
+                clearTag("qtr-selectable");
                 break;
         }
     },
@@ -222,22 +261,30 @@ define([
 
         if (this.isCurrentPlayerActive()) {
             switch (stateName) {
-                case 'setup':
-                    this.addActionButton('qtr-deploy', _("Deploy pieces"), event => {
+                case "setup":
+                    const spaces = document.querySelectorAll(
+                        `.qtr-board-space[data-color="${this.playerColor}"]`);
+                    for (const space of spaces) {
+                        space.classList.add("qtr-selectable");
+                    }
+                    this.addActionButton("qtr-deploy", _("Deploy pieces"), event => {
                         event.stopPropagation();
                         this.deployPieces();
                     });
+                    this.updateDeployment();
                     break;
-                case 'clientMove':
-                    this.addActionButton('qtr-cancel', _("Cancel"), event => {
+                case "clientMove":
+                    this.addActionButton("qtr-cancel", _("Cancel"), event => {
                         event.stopPropagation()
                         this.restoreServerGameState();
                     }, null, null, "gray");
             }
-        } else {
+        } else if (!this.isSpectator) {
             switch (stateName) {
-                case 'setup':
-                    this.addActionButton('qtr-cancel', _("Cancel"), event => {
+                case "setup":
+                    this.unselectPiece();
+                    clearTag("qtr-selectable");
+                    this.addActionButton("qtr-cancel", _("Cancel"), event => {
                         dojo.stopEvent(event);
                         this.cancelDeploy();
                     }, null, null, "gray");
@@ -245,21 +292,57 @@ define([
         }
     },
 
+    selectPiece(piece) {
+        if (piece) {
+            this.unselectPiece();
+            this.selectedPiece = piece;
+            this.selectedPiece.classList.add("qtr-selected");
+            return true;
+        }
+        return false;
+    },
+
+    unselectPiece() {
+        if (this.selectedPiece) {
+            this.selectedPiece.classList.remove("qtr-selected");
+            this.selectedPiece = undefined;
+            return true;
+        }
+        return false;
+    },
+
+    updateDeployment() {
+        const captures = document.querySelector(
+            `.qtr-captures[data-color="${this.playerColor}"]`);
+        const hasPieces = captures.children.length > 0;
+
+        if (hasPieces) {
+            this.selectPiece(captures.children[0]);
+        } else if (!this.selectedPiece) {
+            this.selectPiece(document.querySelector(
+                `.qtr-piece[data-color="${this.playerColor}"]`));
+        }
+
+        document.getElementById("qtr-deploy").classList.toggle(
+            "disabled", hasPieces);
+    },
+
     onSpaceClick(space, x, y) {
         console.log(`Space click (${x}, ${y})`);
-        if (this.checkAction("deploy", true)) {
-            space.classList.toggle("qtr-selected");
-        } else if (this.checkAction("move", true)) {
-            const piece = space.firstChild;
-            if (piece) {
-                piece.classList.add("qtr-selected");
-                this.selectedPiece = piece;
-                this.paths = prepareMove(
-                    space.dataset.x,
-                    space.dataset.y,
-                    piece.dataset.color,
-                    piece.dataset.value);
+        if (!space.classList.contains("qtr-selectable")) {
+            return;
+        }
 
+        if (this.checkAction("deploy", true)) {
+            if (!this.selectPiece(space.children[0])
+                && this.selectedPiece)
+            {
+                this.animateTranslation(this.selectedPiece, space);
+                this.updateDeployment();
+            }
+        } else if (this.checkAction("move", true)) {
+            const piece = space.children[0];
+            if (this.selectPiece(piece)) {
                 this.setClientState("clientMove", {
                     descriptionmyturn: _("${you} must select the destination space"),
                     possibleactions: ["clientMove"]
@@ -283,8 +366,22 @@ define([
         }
     },
 
+    onPieceClick(piece) {
+
+    },
+
     deployPieces() {
-        const spaces = Array.from(document.querySelectorAll(".qtr-board-space.qtr-selected"));
+        const spaces = [];
+        for (const suit of deploymentSuits) {
+            for (const value of deploymentValues) {
+                const space = document
+                    .getElementById(`qtr-piece-${suit}-${value}`)
+                    .parentElement;
+                if (space.classList.contains("qtr-board-space")) {
+                    spaces.push(space);
+                }
+            }
+        }
         const positions = spaces
             .map(s => `${s.dataset.x},${s.dataset.y}`)
             .join(",");
@@ -300,7 +397,23 @@ define([
         }, () => {});
     },
 
-    animateTranslation(node, startRect) {
+    animateTranslation(node, destination) {
+        const useOffsetAnimation = this.useOffsetAnimation;
+        function stopAnimation() {
+            if (useOffsetAnimation) {
+                if (node.classList.contains("qtr-moving")) {
+                    node.classList.remove("qtr-moving");
+                    node.style.offsetPath = "unset";
+                }
+            } else if (node.classList.contains("qtr-moving-simple")) {
+                node.classList.remove("qtr-moving-simple");
+                node.style.transform = "none";
+            }
+        }
+        stopAnimation();
+
+        const startRect = node.getBoundingClientRect();
+        destination.appendChild(node);
         const endRect = node.getBoundingClientRect();
         const [dX, dY] = [
             endRect.left - startRect.left,
@@ -319,19 +432,47 @@ define([
             node.classList.add("qtr-moving-simple");
         }
 
-        node.addEventListener("animationend", () => {
-            if (this.useOffsetAnimation) {
-                node.classList.remove("qtr-moving");
-                node.style.offsetPath = "unset";
-            } else {
-                node.classList.remove("qtr-moving-simple");
-                node.style.transform = "none";
-            }
-        }, {once: true});
+        node.addEventListener("animationend", stopAnimation, {once: true});
     },
 
     setupNotifications() {
         console.log("notifications subscriptions setup");
+
+        dojo.subscribe("deploy", this, (data) => {
+            console.log(data.args);
+            const moves = [];
+
+            for (const item of data.args.pieces) {
+                const piece = document.getElementById(`qtr-piece-${item.suit}-${item.value}`);
+                if (!piece.parentElement.classList.contains("qtr-board-space")) {
+                    const x = parseInt(item.x);
+                    const y = parseInt(item.y);
+                    const space = document.getElementById(`qtr-board-space-${x}-${y}`);
+                    const position = x - (y + 1) / 2;
+                    moves.push({piece, space, x, y, position})
+                }
+            }
+
+            moves.sort((m1, m2) => {
+                const colors = [m1, m2].map(m => m.piece.dataset.color);
+                if (colors[0] !== colors[1]) {
+                    return 0;
+                }
+                return this.playerColor === "black" ?
+                    m1.position - m2.position :
+                    m2.position - m1.position;
+            });
+
+            const timeStep = 300;
+            moves.forEach((m, i) =>
+                setTimeout(
+                    () => this.animateTranslation(m.piece, m.space),
+                    i * timeStep)
+            );
+
+            this.notifqueue.setSynchronousDuration(900 + (moves.length - 1) * timeStep);
+        })
+
         dojo.subscribe("move", this, (data) => {
             console.log(data.args);
             function argsToPiece(name) {
@@ -343,21 +484,13 @@ define([
             const movedPiece = argsToPiece("movedPiece");
             const capturedPiece = argsToPiece("capturedPiece");
             if (capturedPiece) {
-                const rect = capturedPiece.getBoundingClientRect();
                 const space = document.querySelector(
                     `.qtr-captures[data-color="${capturedPiece.dataset.color}"]`)
-                space.appendChild(capturedPiece);
-                //setTimeout(() => {
-                    this.animateTranslation(capturedPiece, rect);
-                //}, 0);
+                this.animateTranslation(capturedPiece, space);
             }
-            const rect = movedPiece.getBoundingClientRect();
             const space = document.getElementById(
                 `qtr-board-space-${data.args.x}-${data.args.y}`)
-            space.appendChild(movedPiece);
-            //setTimeout(() => {
-                this.animateTranslation(movedPiece, rect);
-            //}, 0);
+            this.animateTranslation(movedPiece, space);
         });
     },
 
