@@ -260,12 +260,13 @@ class QuattuorReges extends Table
         $side = self::getPlayerNoById($playerId) - 1;
         $suitOwner = $side << 1;
         $ownerMask = Suit::OWNER_MASK;
+        $king = 13;
 
         $pieces = self::getObjectListFromDb(<<<EOF
-            SELECT * FROM piece 
+            SELECT * FROM piece AS move
             WHERE x = $x AND y = $y AND (suit & $ownerMask) = $suitOwner 
-               AND (SELECT COUNT(*) FROM piece AS kings
-                    WHERE kings.suit = suit) <> 0
+               AND (value = 0 OR (SELECT COUNT(*) FROM piece AS kings
+                    WHERE kings.suit = move.suit AND kings.value = $king) <> 0)
                OR x = $tx AND y = $ty
             ORDER BY ABS(CAST(x AS SIGNED) - $x) 
                      + ABS(CAST(y AS SIGNED) - $y) ASC

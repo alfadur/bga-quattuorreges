@@ -249,8 +249,16 @@ define([
                         `.qtr-board-space .qtr-piece[data-color="${this.playerColor}"]`);
                     for (const piece of pieces) {
                         const suitBit = 0x1 << (parseInt(piece.dataset.suit) & 0x1);
+
                         if ((movedSuits & suitBit) === 0) {
-                            piece.parentElement.classList.add("qtr-selectable");
+                            const king = document.querySelector(
+                                `.qtr-piece[data-suit="${piece.dataset.suit}"][data-value="13"]`);
+
+                            if (king.parentElement.classList.contains("qtr-board-space")
+                                || piece.dataset.value === "0")
+                            {
+                                piece.parentElement.classList.add("qtr-selectable");
+                            }
                         }
                     }
                     break;
@@ -301,7 +309,6 @@ define([
             case "clientMove":
             case "clientRescueBase": {
                 if (this.unselectPiece()) {
-
                     clearTag("qtr-selectable");
                 }
                 break;
