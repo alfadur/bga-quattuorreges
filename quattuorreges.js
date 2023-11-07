@@ -94,7 +94,7 @@ function createPiece(suit, value) {
 function canCapture(pieceValue, targetValue) {
     pieceValue = parseInt(pieceValue);
     targetValue = parseInt(targetValue);
-    return pieceValue === 0
+    return pieceValue === 0 && (11 <= targetValue && targetValue <= 13 || targetValue === 0)
         || 11 <= pieceValue && pieceValue <= 13 && 11 <= targetValue && targetValue <= 13
         && (pieceValue - targetValue + 3) % 3 === 1
         || 11 <= pieceValue && pieceValue <= 13 && 7 <= targetValue && targetValue <= 10
@@ -672,14 +672,14 @@ define([
                     m2.position - m1.position;
             });
 
-            const timeStep = 300;
+            const timeStep = 250;
             moves.forEach((m, i) =>
                 setTimeout(
                     () => this.animateTranslation(m.piece, m.space),
                     i * timeStep)
             );
 
-            this.notifqueue.setSynchronousDuration(900 + (moves.length - 1) * timeStep);
+            this.notifqueue.setSynchronousDuration(600 + (moves.length - 1) * timeStep);
         })
 
         dojo.subscribe("move", this, (data) => {
@@ -694,8 +694,6 @@ define([
             const space = document.getElementById(
                 `qtr-board-space-${data.args.x}-${data.args.y}`)
             this.animateTranslation(movedPiece, space);
-
-            this.notifqueue.setSynchronousDuration(500);
         });
 
         dojo.subscribe("rescue", this, (data) => {
@@ -715,6 +713,10 @@ define([
                 }
             }
         });
+
+        this.notifqueue.setSynchronous('deploy');
+        this.notifqueue.setSynchronous('move', 600);
+        this.notifqueue.setSynchronous('rescue', 600);
     },
 
     formatPieceIcon(...values) {

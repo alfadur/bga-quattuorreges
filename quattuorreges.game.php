@@ -119,7 +119,7 @@ class QuattuorReges extends Table
 
         $pieceValue = (int)$piece['value'];
         $targetValue = (int)$target['value'];
-        return $pieceValue === 0
+        return $pieceValue === 0 && (11 <= $targetValue && $targetValue <= 13 || $targetValue === 0)
             || 11 <= $pieceValue && $pieceValue <= 13 && 11 <= $targetValue && $targetValue <= 13
                 && ($pieceValue - $targetValue + 3) % 3 === 1
             || 11 <= $pieceValue && $pieceValue <= 13 && 7 <= $targetValue && $targetValue <= 10
@@ -536,7 +536,6 @@ class QuattuorReges extends Table
             'rescueCount' => self::getRescueCount($x, $y, $side, -1)
         ];
     }
-
 
     function zombieTurn($state, $activePlayer)
     {
