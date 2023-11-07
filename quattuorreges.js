@@ -278,6 +278,13 @@ define([
                         this.selectedPiece.dataset.value);
                     break;
                 }
+                case "clientMoveAce": {
+                    const spaces = [this.aceMove.source, this.aceMove.destination];
+                    for (const space of spaces) {
+                        space.classList.add("qtr-selectable");
+                    }
+                    break;
+                }
                 case "rescue": {
                     console.log(state.args);
                     const space = state.args.rescueSpace;
@@ -327,6 +334,7 @@ define([
                 break;
             }
             case "move":
+            case "clientMoveAce":
             case "clientRescuePiece": {
                 clearTag("qtr-selectable");
                 break;
@@ -366,7 +374,8 @@ define([
                     }, null, null, "gray");
                     break;
                 }
-                case "clientMove": {
+                case "clientMove":
+                case "clientMoveAce":{
                     this.addActionButton("qtr-cancel", _("Cancel"), event => {
                         event.stopPropagation();
                         this.restoreServerGameState();
@@ -463,19 +472,40 @@ define([
             }
         } else if (this.checkAction("clientMove", true)) {
             if (space.classList.contains("qtr-selectable")) {
-                const piece = document.querySelector(".qtr-piece.qtr-selected");
-                const sourceSpace = piece.parentElement;
                 const path = this.paths.filter(p =>
                     p.space.x === x && p.space.y === y)[0];
-
-                this.ajaxcall("/quattuorreges/quattuorreges/move.html", {
-                    x: sourceSpace.dataset.x,
-                    y: sourceSpace.dataset.y,
-                    steps: path.steps.join(","),
-                    retreat: false,
-                    lock: true
-                }, () => {});
+                const sourceSpace = this.selectedPiece.parentElement;
+                if (this.selectedPiece.dataset.value === "0"
+                    && space.children.length !== 0)
+                {
+                    this.aceMove = {
+                        source: sourceSpace,
+                        destination: space,
+                        path
+                    };
+                    this.setClientState("clientMoveAce", {
+                        descriptionmyturn: _("${you} must select the final space for the Ace"),
+                        possibleactions: ["clientMoveAce"]
+                    });
+                } else {
+                    this.ajaxcall("/quattuorreges/quattuorreges/move.html", {
+                        x: sourceSpace.dataset.x,
+                        y: sourceSpace.dataset.y,
+                        steps: path.steps.join(","),
+                        retreat: false,
+                        lock: true
+                    }, () => {});
+                }
             }
+        } else if (this.checkAction("clientMoveAce", true)) {
+            const retreat = space === this.aceMove.source;
+            this.ajaxcall("/quattuorreges/quattuorreges/move.html", {
+                x: this.aceMove.source.dataset.x,
+                y: this.aceMove.source.dataset.y,
+                steps: this.aceMove.path.steps.join(","),
+                retreat,
+                lock: true
+            }, () => {})
         } else if (this.checkAction("clientRescuePiece", true)) {
             this.addRescuedPiece(space.children[0]);
         } else if (this.checkAction("clientRescueBase", true)) {
