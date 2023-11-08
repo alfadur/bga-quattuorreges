@@ -109,9 +109,9 @@ trait DbUndoLog {
 
         if ($rescue) {
             $position = $retreat ? $piece : $target;
-            $rescuerValue = (int)$position['x'] + ((int)$position['y'] << 8)
-                + ((int)$piece['suit'] << 16) + ((int)$piece['value'] << 24);
-            self::logUpdateGlobal($undo, Globals::RESCUER, $rescuerValue);
+            $rescuerValue = (int)$position['x'] | ((int)$position['y'] << 8)
+                | ((int)$piece['suit'] << 16) | ((int)$piece['value'] << 24);
+            self::logUpdateGlobal($undo, Globals::RESCUER, $rescuerValue, false);
         }
 
         $this->logSaveUndo($undo);

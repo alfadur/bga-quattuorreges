@@ -459,6 +459,19 @@ class QuattuorReges extends Table
         $nextTurn = $isFirstMove || $movedSuits === 0b11;
         if ($isFirstMove) {
             self::setGameStateValue(Globals::FIRST_MOVE, 0);
+        } else if (0 < $movedSuits && $movedSuits < 3) {
+            $playerId = self::getActivePlayerId();
+            $side = self::getPlayerNoById($playerId) - 1;
+            $suit = ($side * Suit::OWNER_MASK) | (1 - ($movedSuits >> 1));
+            $king = 13;
+            $ace = 0;
+            $movablePieces = (int)self::getUniqueValueFromDb(<<<EOF
+                SELECT COUNT(*) FROM piece
+                WHERE suit = $suit AND value IN ($king, $ace)
+                EOF);
+            if ($movablePieces === 0) {
+                $nextTurn = true;
+            }
         }
 
         $this->gamestate->nextState($nextTurn ? 'confirm' : 'move');
