@@ -76,13 +76,13 @@ $machinestates = [
         Fsm::TRANSITIONS => ['' => State::NEXT_TURN]
     ],
 
-    State::NEXT_TURN => [
-        Fsm::NAME => 'nextTurn',
+    State::NEXT_MOVE => [
+        Fsm::NAME => 'nextMove',
         Fsm::TYPE => FsmType::GAME,
-        Fsm::PROGRESSION => true,
-        Fsm::ACTION => 'stNextTurn',
+        Fsm::ACTION => 'stNextMove',
         Fsm::TRANSITIONS => [
             'move' => State::MOVE,
+            'confirm' => State::CONFIRM_TURN,
             'end' => State::GAME_END
         ],
     ],
@@ -93,9 +93,9 @@ $machinestates = [
         Fsm::DESCRIPTION => clienttranslate('${actplayer} must move a piece'),
         Fsm::OWN_DESCRIPTION => clienttranslate('${you} must move a piece'),
         Fsm::ARGUMENTS => 'argMove',
-        Fsm::POSSIBLE_ACTIONS => ['move', 'pass'],
+        Fsm::POSSIBLE_ACTIONS => ['move', 'pass', 'undo'],
         Fsm::TRANSITIONS => [
-            'next' => State::NEXT_TURN,
+            'next' => State::NEXT_MOVE,
             'rescue' => State::RESCUE
         ]
     ],
@@ -106,8 +106,25 @@ $machinestates = [
         Fsm::DESCRIPTION => clienttranslate('${actplayer} must select piece(s) to rescue'),
         Fsm::OWN_DESCRIPTION => clienttranslate('${you} must select piece(s) to rescue'),
         Fsm::ARGUMENTS => 'argRescue',
-        Fsm::POSSIBLE_ACTIONS => ['rescue', 'pass'],
-        Fsm::TRANSITIONS => ['next' => State::NEXT_TURN]
+        Fsm::POSSIBLE_ACTIONS => ['rescue', 'pass', 'undo'],
+        Fsm::TRANSITIONS => ['next' => State::NEXT_MOVE]
+    ],
+
+    State::CONFIRM_TURN => [
+        Fsm::NAME => 'confirmTurn',
+        Fsm::TYPE => FsmType::SINGLE_PLAYER,
+        Fsm::DESCRIPTION => clienttranslate('${actplayer} must confirm the end of the turn'),
+        Fsm::OWN_DESCRIPTION => clienttranslate('${you} must confirm the end of the turn'),
+        Fsm::POSSIBLE_ACTIONS => ['confirm', 'undo'],
+        Fsm::TRANSITIONS => ['' => State::NEXT_TURN]
+    ],
+
+    State::NEXT_TURN => [
+        Fsm::NAME => "nextTurn",
+        Fsm::TYPE => FsmType::GAME,
+        Fsm::PROGRESSION => true,
+        Fsm::ACTION => 'stNextTurn',
+        Fsm::TRANSITIONS => ['' => State::MOVE]
     ],
 
     State::GAME_END => [

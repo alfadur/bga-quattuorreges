@@ -371,7 +371,7 @@ define([
                         } else {
                             this.pass();
                         }
-                    }, null, null, "gray");
+                    }, null, null, "red");
                     break;
                 }
                 case "clientMove":
@@ -380,8 +380,20 @@ define([
                         event.stopPropagation();
                         this.restoreServerGameState();
                     }, null, null, "gray");
+                    break;
+                }
+                case "confirmTurn": {
+                    this.addActionButton("qtr-confirm", _("Confirm"), event => {
+                        event.stopPropagation();
+                        this.confirm();
+                    }, null, null, "red");
+                    break;
                 }
             }
+            this.addActionButton("qtr-undo", _("Undo"), event => {
+                event.stopPropagation();
+                this.undo();
+            }, null, null, "gray");
         } else if (!this.isSpectator) {
             switch (stateName) {
                 case "setup": {
@@ -580,6 +592,18 @@ define([
         }, () => {});
     },
 
+    confirm() {
+        this.ajaxcall("/quattuorreges/quattuorreges/confirm.html", {
+            lock: true,
+        }, () => {});
+    },
+
+    undo() {
+        this.ajaxcall("/quattuorreges/quattuorreges/undo.html", {
+            lock: true,
+        }, () => {});
+    },
+
     animateTranslation(node, destination) {
         const useOffsetAnimation = this.useOffsetAnimation;
         function stopAnimation() {
@@ -647,6 +671,20 @@ define([
             }
         }
 
+        dojo.subscribe('update', this, (data) => {
+            for (const move of data.args.moves) {
+                const piece = getPiece(move.suit, move.value);
+                const space = getSpace(move.x, move.y);
+                if (!space && piece.parentElement.classList.contains("qtr-board-space")) {
+                    const captures = document.querySelector(
+                        `.qtr-captures[data-color="${piece.dataset.color}"]`)
+                    this.animateTranslation(piece, captures);
+                } else if (space && space !== piece.parentElement) {
+                    this.animateTranslation(piece, space);
+                }
+            }
+        });
+
         dojo.subscribe("deploy", this, (data) => {
             console.log(data.args);
             const moves = [];
@@ -682,20 +720,6 @@ define([
             this.notifqueue.setSynchronousDuration(600 + (moves.length - 1) * timeStep);
         })
 
-        dojo.subscribe("move", this, (data) => {
-            console.log(data.args);
-            const movedPiece = argsToPiece(data, "movedPiece");
-            const capturedPiece = argsToPiece(data, "capturedPiece");
-            if (capturedPiece) {
-                const space = document.querySelector(
-                    `.qtr-captures[data-color="${capturedPiece.dataset.color}"]`)
-                this.animateTranslation(capturedPiece, space);
-            }
-            const space = document.getElementById(
-                `qtr-board-space-${data.args.x}-${data.args.y}`)
-            this.animateTranslation(movedPiece, space);
-        });
-
         dojo.subscribe("rescue", this, (data) => {
             console.log(data.args);
             const capturedPiece = argsToPiece(data, "capturedPiece");
@@ -715,7 +739,7 @@ define([
         });
 
         this.notifqueue.setSynchronous('deploy');
-        this.notifqueue.setSynchronous('move', 600);
+        this.notifqueue.setSynchronous('update', 600);
         this.notifqueue.setSynchronous('rescue', 600);
     },
 

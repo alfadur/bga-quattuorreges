@@ -75,6 +75,13 @@ class action_quattuorreges extends APP_GameAction
         self::ajaxResponse();
     }
 
+    public function confirm()
+    {
+        self::setAjaxMode();
+        $this->game->confirm();
+        self::ajaxResponse();
+    }
+
     public function undo()
     {
         self::setAjaxMode();

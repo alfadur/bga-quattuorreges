@@ -19,9 +19,11 @@
 
 require_once(APP_GAMEMODULE_PATH.'module/table/table.game.php');
 require_once('modules/constants.inc.php');
+require_once('modules/DbUndoLog.php');
 
 class QuattuorReges extends Table
 {
+    use DbUndoLog;
     function __construct( )
     {
         parent::__construct();
@@ -297,62 +299,23 @@ class QuattuorReges extends Table
             if (!self::canCapture($movedPiece, $capturedPiece)) {
                 throw new BgaUserException('Capture not allowed');
             }
-
-            self::DbQuery(<<<EOF
-                DELETE FROM piece
-                WHERE x = $tx AND y = $ty
-                EOF
-            );
         }
 
-        self::incGameStateValue(Globals::MOVED_SUITS, $movedSuitBit);
+        $retreat = $retreat
+            && $capturedPiece !== null
+            && (int)$movedPiece['value'] === 0;
 
-        if ($capturedPiece === null || (int)$movedPiece['value'] <> 0 || !$retreat) {
-            self::DbQuery(<<<EOF
-            UPDATE piece
-            SET x = $tx, y = $ty
-            WHERE x = $x AND y = $y
-            EOF);
-        } else {
-            $tx = $x;
-            $ty = $y;
-        }
+        $rescue = self::getRescueCount(
+                $retreat ? $x : $tx,
+                $retreat ? $y : $ty,
+                $side, $movedPiece['value']) > 0
+            && self::canRescue($side);
 
-        $rescue = self::getRescueCount($tx, $ty, $side, $movedPiece['value']) > 0
-            && self::canRescue($side) > 0;
-        if ($rescue) {
-            $rescuerValue = $tx + ($ty << 8)
-                + ((int)$movedPiece['suit'] << 16)
-                + ((int)$movedPiece['value'] << 24);
-            self::setGameStateValue(Globals::RESCUER, $rescuerValue);
-        }
-
-        $message = $capturedPiece ?
-            clienttranslate('${player_name} moves ${pieceIcon} to (${x},${y}) and captures ${pieceIconC}') :
-            clienttranslate('${player_name} moves ${pieceIcon} to (${x},${y})');
-
-        $args = [
-            'player_name' => self::getActivePlayerName(),
-            'movedPiece' => [
-                'suit' => $movedPiece['suit'],
-                'value' => $movedPiece['value']
-            ],
-            'x' => $tx,
-            'y' => $ty,
-            'pieceIcon' => "$movedPiece[suit],$movedPiece[value]",
-            'preserve' => ['pieceIcon', 'x', 'y']
-        ];
-
-        if ($capturedPiece) {
-            $args['capturedPiece'] = [
-                'suit' => $capturedPiece['suit'],
-                'value' => $capturedPiece['value']
-            ];
-            $args['pieceIconC'] = "$capturedPiece[suit],$capturedPiece[value]";
-            $args['preserve'][] = ['pieceIconC'];
-        }
-
-        self::notifyAllPlayers('move', $message, $args);
+        $this->logMove(
+            $movedPiece,
+            $capturedPiece ?? ['x' => $tx, 'y' => $ty],
+            $retreat,
+            $rescue);
 
         $this->gamestate->nextState($rescue ? 'rescue' : 'next');
     }
@@ -422,14 +385,21 @@ class QuattuorReges extends Table
         self::checkAction('pass');
 
         if ((int)$this->gamestate->state_id() === State::MOVE) {
-            self::setGameStateValue(Globals::MOVED_SUITS, 0b11);
+            $this->logPass();
         }
         $this->gamestate->nextState('next');
     }
 
+    function confirm(): void
+    {
+        self::checkAction('confirm');
+        $this->gamestate->nextState('');
+    }
+
     function undo(): void
     {
-
+        self::checkAction('undo');
+        $this->logUndo();
     }
 
     static function checkGameEnd(): bool
@@ -493,7 +463,7 @@ class QuattuorReges extends Table
         $this->gamestate->nextState('');
     }
 
-    function stNextTurn(): void
+    function stNextMove(): void
     {
         if (self::checkGameEnd()) {
             $this->gamestate->nextState('end');
@@ -503,20 +473,24 @@ class QuattuorReges extends Table
         $isFirstMove = (int)self::getGameStateValue(Globals::FIRST_MOVE);
         $movedSuits = (int)self::getGameStateValue(Globals::MOVED_SUITS);
 
+        $nextTurn = $isFirstMove || $movedSuits === 0b11;
         if ($isFirstMove) {
-            if ($movedSuits) {
-                self::setGameStateValue(Globals::FIRST_MOVE, 0);
-                self::setGameStateValue(Globals::MOVED_SUITS, 0);
-            }
-            self::activeNextPlayer();
-        } else if ($movedSuits === 0b11) {
-            self::setGameStateValue(Globals::MOVED_SUITS, 0);
-            self::activeNextPlayer();
+            self::setGameStateValue(Globals::FIRST_MOVE, 0);
         }
-        $this->gamestate->nextState('move');
+
+        $this->gamestate->nextState($nextTurn ? 'confirm' : 'move');
     }
 
-    function argMove(): array {
+    function stNextTurn()
+    {
+        $this->logClear();
+        self::setGameStateValue(Globals::MOVED_SUITS, 0);
+        self::activeNextPlayer();
+        $this->gamestate->nextState('');
+    }
+
+    function argMove(): array
+    {
         return [
             'movedSuits' => self::getGameStateValue(Globals::MOVED_SUITS)
         ];
@@ -543,7 +517,7 @@ class QuattuorReges extends Table
 
         if ($state['type'] === FsmType::SINGLE_PLAYER) {
             self::setGameStateValue(Globals::MOVED_SUITS, 0b11);
-            $this->gamestate->jumpToState(State::NEXT_TURN);
+            $this->gamestate->jumpToState(State::NEXT_MOVE);
         } else if ($state['type'] === FsmType::MULTIPLE_PLAYERS) {
             $this->gamestate->setPlayerNonMultiactive($activePlayer, '');
         } else {
