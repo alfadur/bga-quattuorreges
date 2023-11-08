@@ -122,16 +122,79 @@ trait DbUndoLog {
         self::notifyAllPlayers('update', $message, $args);
     }
 
-    function logPass(): void
+    function logPass(int $state): void
     {
-        $undo = ['state' => State::MOVE];
-        $this->logUpdateGlobal($undo, Globals::MOVED_SUITS, 0b11, false);
+        $undo = ['state' => $state];
+        if ($state === State::MOVE) {
+            $this->logUpdateGlobal($undo, Globals::MOVED_SUITS, 0b11, false);
+        }
         $this->logSaveUndo($undo);
     }
 
-    function logRescue(): void
+    function logRescue(array $piece, array $rescues): void
     {
+        $undo = [
+            'state' => state::RESCUE,
+        ];
 
+        if (count($rescues) > 0) {
+            self::DbQuery(
+                "DELETE FROM piece WHERE x = $piece[x] AND y = $piece[y]");
+            $inserts = [];
+            $moves = [[
+                'suit' => $piece['suit'],
+                'value' => $piece['value']
+            ]];
+            $icons = [];
+
+            $playerName = self::getActivePlayerName();
+            $undo['notification'] = [
+                'message' => '${player_name} undoes a rescue',
+                'args' => [
+                    'player_name' => $playerName,
+                    'moves' => []
+                ]
+            ];
+            $undo['queries'] = [<<<EOF
+                INSERT INTO piece(suit, value, x, y) 
+                VALUES ($piece[suit], $piece[value], 
+                    $piece[x], $piece[y])
+                EOF];
+            $deletes = [];
+
+            foreach ($rescues as $rescuedPiece)
+            {
+                ['suit' => $suit, 'value' => $value, 'x' => $x, 'y' => $y] =
+                    $rescuedPiece;
+                $inserts[] = "($suit, $value, $x, $y)";
+                $moves[] = $rescuedPiece;
+                $icons[] = "$suit,$value";
+
+                $undo['notification']['args']['moves'][] =
+                    ['suit' => $suit, 'value' => $value];
+                $deletes[] = "x = $x AND y = $y";
+            }
+
+            $undo['notification']['args']['moves'][] = $piece;
+
+            $deleteArgs = implode(" OR ", $deletes);
+            $undo['queries'][] =
+                "DELETE FROM piece WHERE $deleteArgs";
+
+            $insertArgs = implode(',', $inserts);
+            self::DbQuery(
+                "INSERT INTO piece(suit, value, x, y) VALUES $insertArgs");
+
+            self::notifyAllPlayers('update', clienttranslate('${player_name} exchanges ${pieceIcon} for ${pieceIcons}'), [
+                'player_name' => self::getActivePlayerName(),
+                'moves' => $moves,
+                'pieceIcon' => "$piece[suit],$piece[value]",
+                'pieceIcons' => implode(',', $icons),
+                'preserve' => ['pieceIcon', 'pieceIcons']
+            ]);
+        }
+
+        $this->logSaveUndo($undo);
     }
 
     function logCanUndo(): bool {
@@ -146,8 +209,10 @@ trait DbUndoLog {
             'SELECT * FROM undo_log ORDER BY id DESC LIMIT 1');
         $undo = json_decode($json['state'], true);
 
-        foreach ($undo['globals'] as [$name, $value]) {
-            self::setGameStateValue($name, $value);
+        if (array_key_exists('globals', $undo)) {
+            foreach ($undo['globals'] as [$name, $value]) {
+                self::setGameStateValue($name, $value);
+            }
         }
 
         if (array_key_exists('queries', $undo)) {

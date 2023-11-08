@@ -337,12 +337,7 @@ class QuattuorReges extends Table
             throw new BgaUserException('Invalid rescue count');
         }
 
-        self::DbQuery(
-            "DELETE FROM piece WHERE x = $x AND y = $y");
-
-        $values = [];
         $rescues = [];
-        $icons = [];
 
         foreach ($pieces as [$suit, $value, $baseIndex]) {
             if (!in_array($value, PIECE_VALUES, true)) {
@@ -352,30 +347,21 @@ class QuattuorReges extends Table
                 throw new BgaUserException("Invalid piece suit");
             }
             [$baseX, $baseY] = PLAYER_BASES[$side][$baseIndex];
-            $values[] = "($value, $suit, $baseX, $baseY)";
             $rescues[] = [
                 'value' => $value,
                 'suit' => $suit,
                 'x' => $baseX,
                 'y' => $baseY
             ];
-            $icons[] = "$suit,$value";
         }
 
-        $args = implode(',', $values);
-        self::DbQuery("INSERT INTO piece(value, suit, x, y) VALUES $args");
-
-        self::notifyAllPlayers('rescue', clienttranslate('${player_name} exchanges ${pieceIcon} for ${pieceIcons}'), [
-            'player_name' => self::getActivePlayerName(),
-            'capturedPiece' => [
-                'suit' => $rescuerSuit,
-                'value' => $rescuerValue
-            ],
-            'rescuedPieces' => $rescues,
-            'pieceIcon' => "$rescuerSuit,$rescuerValue",
-            'pieceIcons' => implode(',', $icons),
-            'preserve' => ['pieceIcon', 'pieceIcons']
-        ]);
+        $piece = [
+            'suit' => $rescuerSuit,
+            'value' => $rescuerValue,
+            'x' => $x,
+            'y' => $y
+        ];
+        $this->logRescue($piece, $rescues);
 
         $this->gamestate->nextState('');
     }
@@ -383,10 +369,7 @@ class QuattuorReges extends Table
     function pass(): void
     {
         self::checkAction('pass');
-
-        if ((int)$this->gamestate->state_id() === State::MOVE) {
-            $this->logPass();
-        }
+        $this->logPass((int)$this->gamestate->state_id());
         $this->gamestate->nextState('next');
     }
 

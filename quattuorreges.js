@@ -364,7 +364,9 @@ define([
                 case "move":
                 case "clientRescuePiece":
                 case "clientRescueBase": {
-                    this.addActionButton("qtr-pass", _("Pass"), event => {
+                    const name = stateName === "move" ?
+                        _("Pass") : _("Skip")
+                    this.addActionButton("qtr-pass", name, event => {
                         event.stopPropagation();
                         if (stateName !== "move" && this.rescuedPieces.length > 0) {
                             this.rescuePieces(this.rescuedPieces)
@@ -656,23 +658,14 @@ define([
             }
             return source;
         }
-        function argsToPiece(data, ...path) {
-            const source = getPath(data, ...path);
-            if (source) {
-                const {suit, value} = source;
-                return getPiece(suit, value);
-            }
-        }
-
-        function argsToSpace(data, ...path) {
-            const source = getPath(data, ...path);
-            if (source) {
-                return getSpace(source.x, source.y);
-            }
-        }
 
         dojo.subscribe('update', this, (data) => {
+            const moves = {};
             for (const move of data.args.moves) {
+                moves[`${move.suit},${move.value}`] = move;
+            }
+            for (const key of Object.keys(moves)) {
+                const move = moves[key];
                 const piece = getPiece(move.suit, move.value);
                 const space = getSpace(move.x, move.y);
                 if (!space && piece.parentElement.classList.contains("qtr-board-space")) {
@@ -720,27 +713,8 @@ define([
             this.notifqueue.setSynchronousDuration(600 + (moves.length - 1) * timeStep);
         })
 
-        dojo.subscribe("rescue", this, (data) => {
-            console.log(data.args);
-            const capturedPiece = argsToPiece(data, "capturedPiece");
-
-            if (capturedPiece.parentElement.dataset.color !== capturedPiece.dataset.color) {
-                const captures = document.querySelector(`.qtr-captures[data-color="${capturedPiece.dataset.color}"]`);
-                this.animateTranslation(capturedPiece, captures);
-            }
-
-            for (let i = 0; i < data.args.rescuedPieces.length; ++i) {
-                const piece = argsToPiece(data, "rescuedPieces", i);
-                const space = argsToSpace(data, "rescuedPieces", i);
-                if (piece.parentElement !== space) {
-                    this.animateTranslation(piece, space);
-                }
-            }
-        });
-
         this.notifqueue.setSynchronous('deploy');
         this.notifqueue.setSynchronous('update', 600);
-        this.notifqueue.setSynchronous('rescue', 600);
     },
 
     formatPieceIcon(...values) {
