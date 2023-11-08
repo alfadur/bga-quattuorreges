@@ -731,10 +731,10 @@ define([
             values.splice(0, 2);
         }
         return pieces.map(([suit, value]) => {
-            const content = `${pieceValues[value]}<br>${pieceSuits[suit]}`;
             return `<div class="qtr-piece qtr-piece-icon" 
                 data-color="${getPlayerColor(suit)}"
-                data-value="${value}">${content}</div>`;
+                data-suit="${suit}"
+                data-value="${value}"></div>`;
         }).join("");
     },
 
