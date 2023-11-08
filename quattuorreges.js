@@ -295,12 +295,8 @@ define([
                         getFreeBases(this.playerColor).length,
                         getCapturedPieces(this.playerColor).length);
                     this.rescuedPieces = [];
-                    this.setClientState("clientRescuePiece", {
-                        descriptionmyturn: _("${you} must select a piece to rescue"),
-                        possibleactions: ["clientRescuePiece"]
-                    });
-                    break;
                 }
+                //fallthrough
                 case "clientRescuePiece": {
                     for (const piece of getCapturedPieces(this.playerColor)) {
                         piece.classList.add("qtr-selectable");
@@ -334,6 +330,7 @@ define([
                 break;
             }
             case "move":
+            case "rescue":
             case "clientMoveAce":
             case "clientRescuePiece": {
                 clearTag("qtr-selectable");
@@ -360,8 +357,8 @@ define([
                     this.updateDeployment();
                     break;
                 }
-
                 case "move":
+                case "rescue":
                 case "clientRescuePiece":
                 case "clientRescueBase": {
                     const name = stateName === "move" ?
@@ -376,14 +373,6 @@ define([
                     }, null, null, "red");
                     break;
                 }
-                case "clientMove":
-                case "clientMoveAce":{
-                    this.addActionButton("qtr-cancel", _("Cancel"), event => {
-                        event.stopPropagation();
-                        this.restoreServerGameState();
-                    }, null, null, "gray");
-                    break;
-                }
                 case "confirmTurn": {
                     this.addActionButton("qtr-confirm", _("Confirm"), event => {
                         event.stopPropagation();
@@ -392,10 +381,25 @@ define([
                     break;
                 }
             }
-            this.addActionButton("qtr-undo", _("Undo"), event => {
-                event.stopPropagation();
-                this.undo();
-            }, null, null, "gray");
+
+            const cancellableStates =
+                ["clientMove", "clientMoveAce", "clientRescuePiece", "clientRescueBase"];
+            if (cancellableStates.indexOf(stateName) >= 0) {
+                this.addActionButton("qtr-cancel", _("Cancel"), event => {
+                    event.stopPropagation();
+                    this.restoreServerGameState();
+                }, null, null, "gray");
+            }
+
+            if (stateName === "rescue"
+                || stateName === "confirmTurn"
+                || stateName === "move" && args.canUndo)
+            {
+                this.addActionButton("qtr-undo", _("Undo"), event => {
+                    event.stopPropagation();
+                    this.undo();
+                }, null, null, "gray");
+            }
         } else if (!this.isSpectator) {
             switch (stateName) {
                 case "setup": {
@@ -520,7 +524,9 @@ define([
                 retreat,
                 lock: true
             }, () => {})
-        } else if (this.checkAction("clientRescuePiece", true)) {
+        } else if (this.checkAction("clientRescuePiece", true)
+            || this.checkAction("rescue", true))
+        {
             this.addRescuedPiece(space.children[0]);
         } else if (this.checkAction("clientRescueBase", true)) {
             this.rescuedPieces.push({
@@ -548,7 +554,9 @@ define([
             return;
         }
 
-        if (this.checkAction("clientRescuePiece", true)) {
+        if (this.checkAction("clientRescuePiece", true)
+            || this.checkAction("rescue", true))
+        {
             this.addRescuedPiece(piece);
         }
     },

@@ -475,7 +475,8 @@ class QuattuorReges extends Table
     function argMove(): array
     {
         return [
-            'movedSuits' => self::getGameStateValue(Globals::MOVED_SUITS)
+            'movedSuits' => self::getGameStateValue(Globals::MOVED_SUITS),
+            'canUndo' => $this->logCanUndo()
         ];
     }
 
