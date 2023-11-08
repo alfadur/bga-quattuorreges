@@ -83,12 +83,11 @@ function getPlayerColor(suit) {
 }
 
 function createPiece(suit, value) {
-    const content = `${pieceValues[value]}<br>${pieceSuits[suit]}`;
     return `<div id="qtr-piece-${suit}-${value}"
         class="qtr-piece" 
         data-color="${getPlayerColor(suit)}"
         data-suit="${suit}"
-        data-value="${value}">${content}</div>`;
+        data-value="${value}"></div>`;
 }
 
 function canCapture(pieceValue, targetValue) {
