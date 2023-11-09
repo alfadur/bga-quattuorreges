@@ -73,7 +73,7 @@ $machinestates = [
         Fsm::NAME => 'reveal',
         Fsm::TYPE => FsmType::GAME,
         Fsm::ACTION => "stReveal",
-        Fsm::TRANSITIONS => ['' => State::NEXT_TURN]
+        Fsm::TRANSITIONS => ['' => State::MOVE]
     ],
 
     State::NEXT_MOVE => [

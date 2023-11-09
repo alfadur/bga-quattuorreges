@@ -443,6 +443,7 @@ class QuattuorReges extends Table
         self::notifyAllPlayers('deploy',
             clienttranslate('Piece positions are revealed'),
             ['pieces' => $pieces]);
+        self::activeNextPlayer();
         $this->gamestate->nextState('');
     }
 
