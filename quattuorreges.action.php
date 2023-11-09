@@ -54,9 +54,8 @@ class action_quattuorreges extends APP_GameAction
         self::setAjaxMode();
         $x = self::getArg('x', AT_posint, true);
         $y = self::getArg('y', AT_posint, true);
-        $retreat = self::getArg('retreat', AT_bool, true);
         $steps = self::getArg('steps', AT_numberlist, true);
-        $this->game->move($x, $y, $this->parseList($steps, 1), $retreat);
+        $this->game->move($x, $y, $this->parseList($steps, 1));
         self::ajaxResponse();
     }
 
@@ -65,6 +64,14 @@ class action_quattuorreges extends APP_GameAction
         self::setAjaxMode();
         $args = self::getArg('pieces', AT_numberlist, true);
         $this->game->rescue($this->parseList($args, 3));
+        self::ajaxResponse();
+    }
+
+    public function retreat()
+    {
+        self::setAjaxMode();
+        $retreat = self::getArg('retreat', AT_bool, true);
+        $this->game->retreat($retreat);
         self::ajaxResponse();
     }
 

@@ -1,6 +1,25 @@
 <?php
 
 trait DbUndoLog {
+
+    static function packPiece(array $piece, ?array $position = null): int {
+        $x = $position ? $position['x'] : $piece['x'];
+        $y = $position ? $position['y'] : $piece['y'];
+        return (int)$x
+            | ((int)$y << 8)
+            | ((int)$piece['suit'] << 16)
+            | ((int)$piece['value'] << 24);
+    }
+
+    static function unpackPiece(int $value): array {
+        return [
+            'x' => $value & 0xFF,
+            'y' => ($value >> 8) & 0xFF,
+            'suit' => ($value >> 16) & 0xFF,
+            'value' => ($value >> 24) & 0xFF
+        ];
+    }
+
     function logUpdateGlobal(array &$undo, string $name, int $value, bool $increment = true): void
     {
         $undo['globals'][] = [
@@ -78,40 +97,41 @@ trait DbUndoLog {
             ];
         }
 
-        if (!$retreat) {
-            self::DbQuery(<<<EOF
+        self::DbQuery(<<<EOF
                 UPDATE piece
                 SET x = $target[x], y = $target[y]
                 WHERE x = $piece[x] AND y = $piece[y]
                 EOF);
-            $args['moves'][] = [
-                'suit' => $piece['suit'],
-                'value' => $piece['value'],
-                'x' => $target['x'],
-                'y' => $target['y']
-            ];
+        $args['moves'][] = [
+            'suit' => $piece['suit'],
+            'value' => $piece['value'],
+            'x' => $target['x'],
+            'y' => $target['y']
+        ];
 
-            $undo['queries'][] = <<<EOF
-                UPDATE piece
-                SET x = $piece[x], y = $piece[y]
-                WHERE x = $target[x] AND y = $target[y]
-                EOF;
-            $undo['notification']['args']['moves'][] = [
-                'suit' => $piece['suit'],
-                'value' => $piece['value'],
-                'x' => $piece['x'],
-                'y' => $piece['y']
-            ];
-        }
+        $undo['queries'][] = <<<EOF
+            UPDATE piece
+            SET x = $piece[x], y = $piece[y]
+            WHERE x = $target[x] AND y = $target[y]
+            EOF;
+        $undo['notification']['args']['moves'][] = [
+            'suit' => $piece['suit'],
+            'value' => $piece['value'],
+            'x' => $piece['x'],
+            'y' => $piece['y']
+        ];
 
         $movedSuitBit = 1 << ((int)$piece['suit'] & (~Suit::OWNER_MASK));
         self::logUpdateGlobal($undo, Globals::MOVED_SUITS, $movedSuitBit);
 
-        if ($rescue) {
-            $position = $retreat ? $piece : $target;
-            $rescuerValue = (int)$position['x'] | ((int)$position['y'] << 8)
-                | ((int)$piece['suit'] << 16) | ((int)$piece['value'] << 24);
-            self::logUpdateGlobal($undo, Globals::RESCUER, $rescuerValue, false);
+        if ($retreat) {
+            self::logUpdateGlobal(
+                $undo, Globals::CAPTURER,
+                self::packPiece($piece), false);
+        } else if ($rescue) {
+            self::logUpdateGlobal(
+                $undo, Globals::RESCUER,
+                self::packPiece($piece, $target), false);
         }
 
         $this->logSaveUndo($undo);
@@ -128,6 +148,48 @@ trait DbUndoLog {
         if ($state === State::MOVE) {
             $this->logUpdateGlobal($undo, Globals::MOVED_SUITS, 0b11, false);
         }
+        $this->logSaveUndo($undo);
+    }
+
+    function logRetreat(array $piece, array $target, bool $retreat, bool $rescue): void {
+        $undo = [
+            'state' => state::RETREAT
+        ];
+
+        if ($retreat) {
+            $playerName = self::getActivePlayerName();
+            self::DbQuery(<<<EOF
+                UPDATE piece 
+                SET x = $target[x], y = $target[y]
+                WHERE suit = $piece[suit] AND value = $piece[value]                    
+                EOF);
+            self::notifyAllPlayers('update', '${player_name} retreats with ${pieceIcon}', [
+                'player_name' => $playerName,
+                'moves' => [$target],
+                'pieceIcon' => "$piece[suit],$piece[value]",
+                'preserve' => ['pieceIcon'],
+            ]);
+
+            $undo['queries'] = [<<<EOF
+                UPDATE piece 
+                SET x = $piece[x], y = $piece[y]
+                WHERE suit = $piece[suit] AND value = $piece[value]
+                EOF];
+            $undo['notification'] = [
+                'message' => '${player_name} undoes a retreat',
+                'args' => [
+                    'player_name' => $playerName,
+                    'moves' => [$piece]
+                ]
+            ];
+        }
+
+        if ($rescue) {
+            self::logUpdateGlobal(
+                $undo, Globals::RESCUER,
+                self::packPiece($retreat ? $target : $piece), false);
+        }
+
         $this->logSaveUndo($undo);
     }
 

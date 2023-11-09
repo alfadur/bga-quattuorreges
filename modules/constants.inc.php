@@ -26,9 +26,10 @@ interface State {
     const REVEAL = 3;
     const NEXT_MOVE = 4;
     const MOVE = 5;
-    const RESCUE = 6;
-    const CONFIRM_TURN = 7;
-    const NEXT_TURN = 8;
+    const RETREAT = 6;
+    const RESCUE = 7;
+    const CONFIRM_TURN = 8;
+    const NEXT_TURN = 9;
 
     const GAME_END = 99;
 }
@@ -41,6 +42,8 @@ interface Globals
     const MOVED_SUITS_ID = 11;
     const RESCUER = 'rescuer';
     const RESCUER_ID = 12;
+    const CAPTURER = 'capturer';
+    const CAPTURER_ID = 13;
 }
 
 const HEX_DIRECTIONS = [

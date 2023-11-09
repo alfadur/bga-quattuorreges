@@ -96,7 +96,21 @@ $machinestates = [
         Fsm::POSSIBLE_ACTIONS => ['move', 'pass', 'undo'],
         Fsm::TRANSITIONS => [
             'next' => State::NEXT_MOVE,
-            'rescue' => State::RESCUE
+            'rescue' => State::RESCUE,
+            'retreat' => State::RETREAT
+        ]
+    ],
+
+    State::RETREAT => [
+        Fsm::NAME => 'retreat',
+        Fsm::TYPE => FsmType::SINGLE_PLAYER,
+        Fsm::DESCRIPTION => clienttranslate('${actplayer} can retreat with ${pieceIcon}'),
+        Fsm::OWN_DESCRIPTION => clienttranslate('${you} can retreat with ${pieceIcon}'),
+        Fsm::ARGUMENTS => 'argRetreat',
+        Fsm::POSSIBLE_ACTIONS => ["retreat", "undo"],
+        Fsm::TRANSITIONS => [
+            'next' => State::NEXT_MOVE,
+            'rescue' =>  State::RESCUE
         ]
     ],
 

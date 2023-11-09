@@ -36,8 +36,8 @@ class Table {
     static function DbQuery(string $query): void {}
     static function DbAffectedRow(): int { return 0; }
     static function getCollectionFromDb(string $query, bool $singleColumn = false): array { return []; }
-    static function getObjectFromDb(string $query): ?object { return null; }
-    static function getNonEmptyObjectFromDb(string $query): object { return new GameImplName(); }
+    static function getObjectFromDb(string $query): ?array { return null; }
+    static function getNonEmptyObjectFromDb(string $query): array { return new GameImplName(); }
     static function getObjectListFromDb(string $query, bool $singleColumn = false): array { return []; }
     static function getUniqueValueFromDb(string $query): ?string { return null; }
 

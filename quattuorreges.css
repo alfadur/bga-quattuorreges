@@ -155,4 +155,6 @@
 .qtr-piece-icon {
     display: inline-block;
     vertical-align: middle;
+    margin-left: 3px;
+    margin-right: 3px;
 }

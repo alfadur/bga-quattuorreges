@@ -277,9 +277,11 @@ define([
                         this.selectedPiece.dataset.value);
                     break;
                 }
-                case "clientMoveAce": {
-                    const spaces = [this.aceMove.source, this.aceMove.destination];
-                    for (const space of spaces) {
+                case "retreat": {
+                    const value = state.args.piece
+                    const piece = getPiece(value.suit, value.value);
+                    const retreat = getSpace(value.x, value.y);
+                    for (const space of [retreat, piece.parentElement]) {
                         space.classList.add("qtr-selectable");
                     }
                     break;
@@ -329,8 +331,8 @@ define([
                 break;
             }
             case "move":
+            case "retreat":
             case "rescue":
-            case "clientMoveAce":
             case "clientRescuePiece": {
                 clearTag("qtr-selectable");
                 break;
@@ -357,6 +359,7 @@ define([
                     break;
                 }
                 case "move":
+                case "retreat":
                 case "rescue":
                 case "clientRescuePiece":
                 case "clientRescueBase": {
@@ -364,7 +367,9 @@ define([
                         _("Pass") : _("Skip")
                     this.addActionButton("qtr-pass", name, event => {
                         event.stopPropagation();
-                        if (stateName !== "move" && this.rescuedPieces.length > 0) {
+                        if (stateName === "retreat") {
+                            this.retreat(false);
+                        } else if (stateName !== "move" && this.rescuedPieces.length > 0) {
                             this.rescuePieces(this.rescuedPieces)
                         } else {
                             this.pass();
@@ -382,7 +387,7 @@ define([
             }
 
             const cancellableStates =
-                ["clientMove", "clientMoveAce", "clientRescuePiece", "clientRescueBase"];
+                ["clientMove", "clientRescuePiece", "clientRescueBase"];
             if (cancellableStates.indexOf(stateName) >= 0) {
                 this.addActionButton("qtr-cancel", _("Cancel"), event => {
                     event.stopPropagation();
@@ -390,7 +395,8 @@ define([
                 }, null, null, "gray");
             }
 
-            if (stateName === "rescue"
+            if (stateName === "retreat"
+                || stateName === "rescue"
                 || stateName === "confirmTurn"
                 || stateName === "move" && args.canUndo)
             {
@@ -492,40 +498,18 @@ define([
                 const path = this.paths.filter(p =>
                     p.space.x === x && p.space.y === y)[0];
                 const sourceSpace = this.selectedPiece.parentElement;
-                if (this.selectedPiece.dataset.value === "0"
-                    && space.children.length !== 0)
-                {
-                    this.aceMove = {
-                        source: sourceSpace,
-                        destination: space,
-                        path
-                    };
-                    this.setClientState("clientMoveAce", {
-                        descriptionmyturn: _("${you} must select the final space for the Ace"),
-                        possibleactions: ["clientMoveAce"]
-                    });
-                } else {
-                    this.ajaxcall("/quattuorreges/quattuorreges/move.html", {
-                        x: sourceSpace.dataset.x,
-                        y: sourceSpace.dataset.y,
-                        steps: path.steps.join(","),
-                        retreat: false,
-                        lock: true
-                    }, () => {});
-                }
+                this.ajaxcall("/quattuorreges/quattuorreges/move.html", {
+                    x: sourceSpace.dataset.x,
+                    y: sourceSpace.dataset.y,
+                    steps: path.steps.join(","),
+                    retreat: false,
+                    lock: true
+                }, () => {});
             }
-        } else if (this.checkAction("clientMoveAce", true)) {
-            const retreat = space === this.aceMove.source;
-            this.ajaxcall("/quattuorreges/quattuorreges/move.html", {
-                x: this.aceMove.source.dataset.x,
-                y: this.aceMove.source.dataset.y,
-                steps: this.aceMove.path.steps.join(","),
-                retreat,
-                lock: true
-            }, () => {})
+        } else if (this.checkAction("retreat", true)) {
+            this.retreat(space.children.length === 0);
         } else if (this.checkAction("clientRescuePiece", true)
-            || this.checkAction("rescue", true))
-        {
+            || this.checkAction("rescue", true)) {
             this.addRescuedPiece(space.children[0]);
         } else if (this.checkAction("clientRescueBase", true)) {
             this.rescuedPieces.push({
@@ -581,6 +565,13 @@ define([
 
     cancelDeploy() {
         this.ajaxcall("/quattuorreges/quattuorreges/cancel.html", {
+            lock: true,
+        }, () => {});
+    },
+
+    retreat(retreat) {
+        this.ajaxcall("/quattuorreges/quattuorreges/retreat.html", {
+            retreat,
             lock: true,
         }, () => {});
     },
@@ -710,7 +701,7 @@ define([
                     m2.position - m1.position;
             });
 
-            const timeStep = 250;
+            const timeStep = 200;
             moves.forEach((m, i) =>
                 setTimeout(
                     () => this.animateTranslation(m.piece, m.space),
