@@ -40,10 +40,12 @@ interface Globals
     const FIRST_MOVE_ID = 10;
     const MOVED_SUITS = 'movedSuits';
     const MOVED_SUITS_ID = 11;
-    const RESCUER = 'rescuer';
-    const RESCUER_ID = 12;
     const CAPTURER = 'capturer';
-    const CAPTURER_ID = 13;
+    const CAPTURER_ID = 12;
+    const RESCUE_COUNT = 'rescueCount';
+    const RESCUE_COUNT_ID = 13;
+    const RESCUED_PIECES = 'rescuedPieces';
+    const RESCUED_PIECES_ID = 14;
 }
 
 const HEX_DIRECTIONS = [

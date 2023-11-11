@@ -41,9 +41,29 @@ trait DbUndoLog {
             EOF);
     }
 
+    function logCapture(array &$undo, array $piece, int $rescueCount)
+    {
+        self::DbQuery(<<<EOF
+                DELETE FROM piece
+                WHERE x = $piece[x] AND y = $piece[y]
+                EOF);
+        $undo['queries'][] = <<<EOF
+            INSERT INTO piece(suit, value, x, y) 
+            VALUES ($piece[suit], $piece[value], $piece[x], $piece[y])
+            EOF;
+        self::logUpdateGlobal(
+            $undo, Globals::RESCUE_COUNT,
+            $rescueCount, false);
+        self::notifyAllPlayers('update', clienttranslate('${pieceIcon} is captured'), [
+            'moves' => [['suit' => $piece['suit'], 'value' => $piece['value']]],
+            'pieceIcon' => "$piece[suit],$piece[value]",
+            'preserve' => ['pieceIcon']
+        ]);
+    }
+
     function logMove(
         array $piece, array $target,
-        bool $retreat, bool $rescue): void
+        bool $retreat, int $rescueCount): void
     {
         $playerName = self::getActivePlayerName();
         $undo = [
@@ -97,11 +117,6 @@ trait DbUndoLog {
             ];
         }
 
-        self::DbQuery(<<<EOF
-                UPDATE piece
-                SET x = $target[x], y = $target[y]
-                WHERE x = $piece[x] AND y = $piece[y]
-                EOF);
         $args['moves'][] = [
             'suit' => $piece['suit'],
             'value' => $piece['value'],
@@ -109,11 +124,6 @@ trait DbUndoLog {
             'y' => $target['y']
         ];
 
-        $undo['queries'][] = <<<EOF
-            UPDATE piece
-            SET x = $piece[x], y = $piece[y]
-            WHERE x = $target[x] AND y = $target[y]
-            EOF;
         $undo['notification']['args']['moves'][] = [
             'suit' => $piece['suit'],
             'value' => $piece['value'],
@@ -121,25 +131,35 @@ trait DbUndoLog {
             'y' => $piece['y']
         ];
 
-        $movedSuitBit = 1 << ((int)$piece['suit'] & (~Suit::OWNER_MASK));
-        self::logUpdateGlobal($undo, Globals::MOVED_SUITS, $movedSuitBit);
-
-        if ($retreat) {
-            self::logUpdateGlobal(
-                $undo, Globals::CAPTURER,
-                self::packPiece($piece), false);
-        } else if ($rescue) {
-            self::logUpdateGlobal(
-                $undo, Globals::RESCUER,
-                self::packPiece($piece, $target), false);
-        }
-
-        $this->logSaveUndo($undo);
-
         $message = $captured ?
             clienttranslate('${player_name} moves ${pieceIcon} to (${x},${y}) and captures ${pieceIconC}') :
             clienttranslate('${player_name} moves ${pieceIcon} to (${x},${y})');
         self::notifyAllPlayers('update', $message, $args);
+
+        if (!$retreat && $rescueCount > 0) {
+            $this->logCapture($undo, $piece, $rescueCount);
+        } else {
+            self::DbQuery(<<<EOF
+                UPDATE piece
+                SET x = $target[x], y = $target[y]
+                WHERE x = $piece[x] AND y = $piece[y]
+                EOF);
+
+            $undo['queries'][] = <<<EOF
+                UPDATE piece
+                SET x = $piece[x], y = $piece[y]
+                WHERE x = $target[x] AND y = $target[y]
+                EOF;
+
+            self::logUpdateGlobal(
+                $undo, Globals::CAPTURER,
+                self::packPiece($piece), false);
+        }
+
+        $movedSuitBit = 1 << ((int)$piece['suit'] & (~Suit::OWNER_MASK));
+        self::logUpdateGlobal($undo, Globals::MOVED_SUITS, $movedSuitBit);
+
+        $this->logSaveUndo($undo);
     }
 
     function logPass(int $state): void
@@ -151,9 +171,10 @@ trait DbUndoLog {
         $this->logSaveUndo($undo);
     }
 
-    function logRetreat(array $piece, array $target, bool $retreat, bool $rescue): void {
+    function logRetreat(array $piece, array $target, bool $retreat, bool $rescueCount): void {
         $undo = [
-            'state' => state::RETREAT
+            'state' => state::RETREAT,
+            'queries' => []
         ];
 
         if ($retreat) {
@@ -170,11 +191,11 @@ trait DbUndoLog {
                 'preserve' => ['pieceIcon'],
             ]);
 
-            $undo['queries'] = [<<<EOF
+            $undo['queries'][] = <<<EOF
                 UPDATE piece 
                 SET x = $piece[x], y = $piece[y]
                 WHERE suit = $piece[suit] AND value = $piece[value]
-                EOF];
+                EOF;
             $undo['notification'] = [
                 'message' => '${player_name} undoes a retreat',
                 'args' => [
@@ -182,31 +203,28 @@ trait DbUndoLog {
                     'moves' => [$piece]
                 ]
             ];
-        }
-
-        if ($rescue) {
-            self::logUpdateGlobal(
-                $undo, Globals::RESCUER,
-                self::packPiece($retreat ? $target : $piece), false);
+        } else if ($rescueCount > 0) {
+            $this->logCapture($undo, $piece, $rescueCount);
+            $undo['notification'] = [
+                'message' => '',
+                'args' => [
+                    'moves' => [$piece]
+                ]
+            ];
         }
 
         $this->logSaveUndo($undo);
     }
 
-    function logRescue(array $piece, array $rescues): void
+    function logRescue(array $rescues, int $rescuedPieces): void
     {
         $undo = [
             'state' => state::RESCUE,
         ];
 
         if (count($rescues) > 0) {
-            self::DbQuery(
-                "DELETE FROM piece WHERE x = $piece[x] AND y = $piece[y]");
             $inserts = [];
-            $moves = [[
-                'suit' => $piece['suit'],
-                'value' => $piece['value']
-            ]];
+            $moves = [];
             $icons = [];
 
             $playerName = self::getActivePlayerName();
@@ -217,11 +235,7 @@ trait DbUndoLog {
                     'moves' => []
                 ]
             ];
-            $undo['queries'] = [<<<EOF
-                INSERT INTO piece(suit, value, x, y) 
-                VALUES ($piece[suit], $piece[value], 
-                    $piece[x], $piece[y])
-                EOF];
+            $undo['queries'] = [];
             $deletes = [];
 
             foreach ($rescues as $rescuedPiece)
@@ -237,8 +251,6 @@ trait DbUndoLog {
                 $deletes[] = "x = $x AND y = $y";
             }
 
-            $undo['notification']['args']['moves'][] = $piece;
-
             $deleteArgs = implode(" OR ", $deletes);
             $undo['queries'][] =
                 "DELETE FROM piece WHERE $deleteArgs";
@@ -247,10 +259,11 @@ trait DbUndoLog {
             self::DbQuery(
                 "INSERT INTO piece(suit, value, x, y) VALUES $insertArgs");
 
-            self::notifyAllPlayers('update', clienttranslate('${player_name} exchanges ${pieceIcon} for ${pieceIcons}'), [
+            $this->logUpdateGlobal($undo, Globals::RESCUED_PIECES, $rescuedPieces, false);
+
+            self::notifyAllPlayers('update', clienttranslate('${player_name} rescues ${pieceIcons}'), [
                 'player_name' => self::getActivePlayerName(),
                 'moves' => $moves,
-                'pieceIcon' => "$piece[suit],$piece[value]",
                 'pieceIcons' => implode(',', $icons),
                 'preserve' => ['pieceIcon', 'pieceIcons']
             ]);

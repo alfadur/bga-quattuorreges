@@ -30,8 +30,9 @@ class QuattuorReges extends Table
         self::initGameStateLabels([
             Globals::FIRST_MOVE => Globals::FIRST_MOVE_ID,
             Globals::MOVED_SUITS => Globals::MOVED_SUITS_ID,
-            Globals::RESCUER => Globals::RESCUER_ID,
-            Globals::CAPTURER => Globals::CAPTURER_ID
+            Globals::CAPTURER => Globals::CAPTURER_ID,
+            Globals::RESCUE_COUNT => Globals::RESCUE_COUNT_ID,
+            Globals::RESCUED_PIECES => Globals::RESCUED_PIECES_ID
         ]);
     }
 
@@ -66,8 +67,9 @@ class QuattuorReges extends Table
         $settings = [
             [Globals::FIRST_MOVE, 1],
             [Globals::MOVED_SUITS, 0],
-            [Globals::RESCUER, 0],
-            [Globals::CAPTURER, 0]
+            [Globals::CAPTURER, 0],
+            [Globals::RESCUE_COUNT, 0],
+            [Globals::RESCUED_PIECES, 0xFFFFFFFF]
         ];
 
         foreach ($settings as [$name, $value]) {
@@ -109,6 +111,7 @@ class QuattuorReges extends Table
     {
         switch ($value) {
             case 0:
+            case 7:
             case 9: return 3;
             case 8: return 4;
             default: return 2;
@@ -175,16 +178,10 @@ class QuattuorReges extends Table
         }
         $args = implode(' OR ', $checks);
 
-        $ownerMask = Suit::OWNER_MASK;
-        $suitOwner = $side << 1;
+        $occupiedBases = (int)self::getUniqueValueFromDb(
+            "SELECT COUNT(*) FROM piece WHERE $args");
 
-        ['bases' => $bases, 'pieces' => $pieces] = self::getObjectFromDb(<<<EOF
-            SELECT 
-                2 - (SELECT COUNT(*) FROM piece WHERE $args) AS bases,
-                (SELECT COUNT(*) FROM piece WHERE (suit & $ownerMask) = $suitOwner) AS pieces
-            EOF);
-
-        return (int)$bases > 0 && (int)$pieces < 2 * count(PIECE_VALUES);
+        return $occupiedBases < 2;
     }
 
     function deploy(array $deployments) {
@@ -232,6 +229,22 @@ class QuattuorReges extends Table
         self::checkAction("move");
 
         $playerId = self::getActivePlayerId();
+        $side = self::getPlayerNoById($playerId) - 1;
+
+        $rescuedPiecesMask = (int)self::getGameStateValue(Globals::RESCUED_PIECES);
+        $bases = PLAYER_BASES[$side];
+
+        for ($i = 0; $i < count($bases); ++$i) {
+            $index = ($rescuedPiecesMask >> ($i * 8)) & 0xFF;
+
+            if ($index < count($bases)) {
+                $base = $bases[$index];
+                if ($base[0] === $x && $base[1] === $y) {
+                    throw new BgaUserException("Piece just rescued");
+                }
+            }
+        }
+
         $tx = $x;
         $ty = $y;
         $checks = [];
@@ -261,7 +274,6 @@ class QuattuorReges extends Table
             }
         }
 
-        $side = self::getPlayerNoById($playerId) - 1;
         $suitOwner = $side << 1;
         $ownerMask = Suit::OWNER_MASK;
         $king = 13;
@@ -305,15 +317,14 @@ class QuattuorReges extends Table
 
         $retreat = (int)$movedPiece['value'] === 0 && $capturedPiece !== null;
 
-        $rescue = !$retreat
-            && self::getRescueCount($tx, $ty, $side, $movedPiece['value']) > 0
-            && self::canRescue($side);
+        $rescueCount = self::getRescueCount($tx, $ty, $side, $movedPiece['value']);
+        $rescue = !$retreat && $rescueCount > 0 && self::canRescue($side);
 
         $this->logMove(
             $movedPiece,
             $capturedPiece ?? ['x' => $tx, 'y' => $ty],
             $retreat,
-            $rescue);
+            $rescueCount);
 
         $transition = $retreat ? 'retreat' :
             ($rescue ? 'rescue' : 'next');
@@ -324,18 +335,15 @@ class QuattuorReges extends Table
     {
         self::checkAction('rescue');
 
-        $rescuer = self::unpackPiece(
-            self::getGameStateValue(Globals::RESCUER));
-
         $side = self::getPlayerNoById(self::getActivePlayerId()) - 1;
-        $count = self::getRescueCount(
-            $rescuer['x'], $rescuer['y'], $side, -1);
+        $count = (int)self::getGameStateValue(Globals::RESCUE_COUNT);
 
-        if (count($pieces) === 0 || count($pieces) > $count) {
+        if (count($pieces) > $count) {
             throw new BgaUserException('Invalid rescue count');
         }
 
         $rescues = [];
+        $rescuedPiecesMask = 0xFFFFFFFF;
 
         foreach ($pieces as [$suit, $value, $baseIndex]) {
             if (!in_array($value, PIECE_VALUES, true)) {
@@ -351,9 +359,10 @@ class QuattuorReges extends Table
                 'x' => $baseX,
                 'y' => $baseY
             ];
+            $rescuedPiecesMask = ($rescuedPiecesMask << 8) | (int)$baseIndex;
         }
 
-        $this->logRescue($rescuer, $rescues);
+        $this->logRescue($rescues, $rescuedPiecesMask);
 
         $this->gamestate->nextState('');
     }
@@ -368,13 +377,14 @@ class QuattuorReges extends Table
             EOF);
 
         $side = self::getPlayerNoById(self::getActivePlayerId()) - 1;
-        $rescue = self::getRescueCount(
-                $retreat ? $target['x'] : $piece['x'],
-                $retreat ? $target['y'] : $piece['y'],
-                $side,
-                $piece['value']) > 0
-            && self::canRescue($side);
-        self::logRetreat($piece, $target, $retreat, $rescue);
+        $rescueCount = !$retreat ?
+            self::getRescueCount(
+                $piece['x'], $piece['y'], $side, $piece['value']) :
+            0;
+        $rescue = $rescueCount > 0 && self::canRescue($side);
+
+        self::logRetreat($piece, $target, $retreat, $rescueCount);
+
         $this->gamestate->nextState($rescue ? 'rescue' : 'next');
     }
 
@@ -493,6 +503,7 @@ class QuattuorReges extends Table
         $this->logClear();
         self::setGameStateValue(Globals::FIRST_MOVE, 0);
         self::setGameStateValue(Globals::MOVED_SUITS, 0);
+        self::setGameStateValue(Globals::RESCUED_PIECES, 0xFFFFFFFF);
         self::activeNextPlayer();
         $this->gamestate->nextState('');
     }
@@ -501,6 +512,7 @@ class QuattuorReges extends Table
     {
         return [
             'movedSuits' => self::getGameStateValue(Globals::MOVED_SUITS),
+            'rescuedPieces' => self::getGameStateValue(Globals::RESCUED_PIECES),
             'canUndo' => $this->logCanUndo()
         ];
     }
@@ -515,15 +527,9 @@ class QuattuorReges extends Table
     }
 
     function argRescue(): array {
-        $rescuer = self::unpackPiece(
-            self::getGameStateValue(Globals::RESCUER));
-        $side = self::getPlayerNoById(self::getActivePlayerId()) - 1;
-
         return [
-            'rescueSpace' => $rescuer,
-            'rescueCount' => self::getRescueCount(
-                $rescuer['x'], $rescuer['y'], $side, -1)
-        ];
+            'rescueCount' =>
+                (int)self::getGameStateValue(Globals::RESCUE_COUNT)        ];
     }
 
     function zombieTurn($state, $activePlayer)

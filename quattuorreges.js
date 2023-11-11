@@ -56,7 +56,7 @@ function getCapturedPieces(playerColor) {
 
 function getPieceRange(pieceValue) {
     pieceValue = parseInt(pieceValue);
-    return pieceValue === 0 || pieceValue === 9 ? 3 :
+    return pieceValue === 0 || pieceValue === 7 || pieceValue === 9 ? 3 :
         pieceValue === 8 ? 4 : 2;
 }
 
@@ -250,17 +250,25 @@ define([
             switch (stateName) {
                 case "move": {
                     const movedSuits = parseInt(state.args.movedSuits);
-                    console.log(movedSuits);
+                    const rescuedPieces = parseInt(state.args.rescuedPieces);
+                    const lockedBases = playerBases[this.playerColor]
+                        .filter((base, index) =>
+                            [0, 1, 2, 3].some(i =>
+                                ((rescuedPieces >> 8 * i) & 0xFF) === index))
+                        .map(id => document.getElementById(id));
+
                     const pieces = document.querySelectorAll(
                         `.qtr-board-space .qtr-piece[data-color="${this.playerColor}"]`);
                     for (const piece of pieces) {
                         const suitBit = 0x1 << (parseInt(piece.dataset.suit) & 0x1);
 
                         if ((movedSuits & suitBit) === 0) {
+                            const locked = lockedBases.some(base => piece.parentElement === base);
                             const king = getPiece(piece.dataset.suit, 13);
 
-                            if (king.parentElement.classList.contains("qtr-board-space")
-                                || piece.dataset.value === "0")
+                            if (!locked
+                                && (king.parentElement.classList.contains("qtr-board-space")
+                                    || piece.dataset.value === "0"))
                             {
                                 piece.parentElement.classList.add("qtr-selectable");
                             }
@@ -288,9 +296,6 @@ define([
                 }
                 case "rescue": {
                     console.log(state.args);
-                    const space = state.args.rescueSpace;
-                    this.rescuer = getSpace(space.x, space.y).children[0];
-                    console.log("R", this.rescuer);
                     this.rescueCount = Math.min(
                         parseInt(state.args.rescueCount),
                         getFreeBases(this.playerColor).length,
@@ -301,10 +306,6 @@ define([
                 case "clientRescuePiece": {
                     for (const piece of getCapturedPieces(this.playerColor)) {
                         piece.classList.add("qtr-selectable");
-                    }
-                    console.log("P", this.rescuer);
-                    if (this.rescuer) {
-                        this.rescuer.parentElement.classList.add("qtr-selectable");
                     }
                     break;
                 }
@@ -369,7 +370,7 @@ define([
                         event.stopPropagation();
                         if (stateName === "retreat") {
                             this.retreat(false);
-                        } else if (stateName !== "move" && this.rescuedPieces.length > 0) {
+                        } else if (stateName !== "move") {
                             this.rescuePieces(this.rescuedPieces)
                         } else {
                             this.pass();
@@ -518,9 +519,6 @@ define([
                 base: space.dataset.baseIndex
             });
             this.animateTranslation(this.selectedPiece, space);
-            if (this.selectedPiece === this.rescuer) {
-                this.rescuer = undefined;
-            }
             if (--this.rescueCount > 0) {
                 this.setClientState("clientRescuePiece", {
                     descriptionmyturn: _("${you} must select a piece to rescue"),
