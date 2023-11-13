@@ -8,8 +8,8 @@
  * -----
  */
 
-const deploymentValues = [7, 8, 9, 10, 11, 12, 13, 0];
-const deploymentSuits = [0, 1, 2, 3];
+const deploymentValues = Object.freeze([7, 8, 9, 10, 11, 12, 13, 0]);
+const deploymentSuits = Object.freeze([0, 1, 2, 3]);
 
 const pieceValues = Object.freeze({
     "7": "7",
@@ -352,6 +352,10 @@ define([
                     for (const space of spaces) {
                         space.classList.add("qtr-selectable");
                     }
+                    this.addActionButton("qtr-randomize", `🎲 ${_("Randomize")}`, event => {
+                        event.stopPropagation();
+                        this.randomizePieces();
+                    });
                     this.addActionButton("qtr-deploy", _("Deploy pieces"), event => {
                         event.stopPropagation();
                         this.deployPieces();
@@ -539,6 +543,42 @@ define([
             || this.checkAction("rescue", true))
         {
             this.addRescuedPiece(piece);
+        }
+    },
+
+    randomizePieces() {
+        function range(n) {
+            const result = [];
+            for (let i = 0; i < n; ++i) {
+                result.push(i);
+            }
+            return result;
+        }
+
+        const side = this.playerColor === "red" ? 0 : 1;
+        const suits = [side * 2, side * 2 + 1];
+
+        const rows = [0, 1, 2, 3].map(n => {
+            const y = 14 * side + (n + 2) * (1 - 2 * side);
+            return range((17 - y % 2) >> 1)
+                .map(x => ({x, y}));
+        });
+
+        for (const value of deploymentValues) {
+            const validLines = value === 13 ? 2 : value === 0 ? 3 : 4;
+            const row = Math.floor(Math.random() * validLines);
+            const index = Math.floor(Math.random() * rows[row].length);
+            const {x, y} = rows[row][index];
+            rows[row].splice(index, 1);
+
+            suits.forEach((suit, i) => {
+                const rowLength = 17 - y % 2;
+                const suitX = ((y + 1) >> 1) +
+                    (rowLength - 1) * i + x * (1 - 2 * i);
+
+                this.animateTranslation(
+                    getPiece(suit, value), getSpace(suitX, y));
+            });
         }
     },
 
