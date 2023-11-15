@@ -564,6 +564,9 @@ define([
                 .map(x => ({x, y}));
         });
 
+        const animationNodes = [];
+        const animationDestinations = [];
+
         for (const value of deploymentValues) {
             const validLines = value === 13 ? 2 : value === 0 ? 3 : 4;
             const row = Math.floor(Math.random() * validLines);
@@ -576,10 +579,13 @@ define([
                 const suitX = ((y + 1) >> 1) +
                     (rowLength - 1) * i + x * (1 - 2 * i);
 
-                this.animateTranslation(
-                    getPiece(suit, value), getSpace(suitX, y));
+                animationNodes.push(getPiece(suit, value));
+                animationDestinations.push(getSpace(suitX, y));
             });
         }
+
+        this.animateTranslation(animationNodes, animationDestinations);
+        this.updateDeployment();
     },
 
     deployPieces() {
@@ -642,9 +648,14 @@ define([
         }, () => {});
     },
 
-    animateTranslation(node, destination) {
+    animateTranslation(nodes, destinations) {
+        if (!Array.isArray(nodes)) {
+            nodes = [nodes];
+            destinations = [destinations];
+        }
+
         const useOffsetAnimation = this.useOffsetAnimation;
-        function stopAnimation() {
+        function stopAnimation(node) {
             if (useOffsetAnimation) {
                 if (node.classList.contains("qtr-moving")) {
                     node.classList.remove("qtr-moving");
@@ -655,29 +666,39 @@ define([
                 node.style.transform = "none";
             }
         }
-        stopAnimation();
 
-        const startRect = node.getBoundingClientRect();
-        destination.appendChild(node);
-        const endRect = node.getBoundingClientRect();
-        const [dX, dY] = [
-            endRect.left - startRect.left,
-            endRect.top - startRect.top
-        ];
+        nodes.forEach(stopAnimation);
+        const startRects = nodes.map(node =>
+            node.getBoundingClientRect());
+        nodes.forEach((node, index) => {
+            destinations[index].appendChild(node);
+        });
 
-        if (this.useOffsetAnimation) {
-            node.style.offsetPath =
-                `path("M 0 0 Q ${-dX / 2 - dY / 8} ${-dY / 2 + dX / 8} ${-dX} ${-dY}")`;
-            node.classList.add("qtr-moving");
+        nodes.forEach((node, index) => {
+            const startRect = startRects[index];
+            const endRect = node.getBoundingClientRect();
+            const [dX, dY] = [
+                endRect.left - startRect.left,
+                endRect.top - startRect.top
+            ];
 
-            node.addEventListener("animationend", () => {
-            }, {once: true});
-        } else {
-            node.style.transform = `translate(${-dX}px, ${-dY}px)`;
-            node.classList.add("qtr-moving-simple");
-        }
+            if (this.useOffsetAnimation) {
+                node.style.offsetPath =
+                    `path("M 0 0 Q ${-dX / 2 - dY / 8} ${-dY / 2 + dX / 8} ${-dX} ${-dY}")`;
+                node.classList.add("qtr-moving");
 
-        node.addEventListener("animationend", stopAnimation, {once: true});
+                node.addEventListener("animationend", () => {
+                }, {once: true});
+            } else {
+                node.style.transform = `translate(${-dX}px, ${-dY}px)`;
+                node.classList.add("qtr-moving-simple");
+            }
+
+            node.addEventListener(
+                "animationend",
+                () => stopAnimation(node),
+                {once: true});
+        })
     },
 
     setupNotifications() {
