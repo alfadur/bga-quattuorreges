@@ -37,6 +37,15 @@ const playerBases = {
 const moveDirections = Object.freeze([[1, 0], [1, 1], [0, 1], [-1, 0], [-1, -1], [0, -1]]
     .map(([x, y]) => Object.freeze({x, y})));
 
+const spaceCorners = Object.freeze([
+    {x: 20, y: 20},
+    {x: 20, y: -20},
+    {x: 0, y: -20},
+    {x: -20, y: -20},
+    {x: -20, y: 20},
+    {x: 0, y: 20},
+]);
+
 function clearTag(tag) {
     for (const element of document.querySelectorAll(`.${tag}`)) {
         element.classList.remove(tag);
@@ -56,7 +65,7 @@ function getCapturedPieces(playerColor) {
 
 function getPieceRange(pieceValue) {
     pieceValue = parseInt(pieceValue);
-    return pieceValue === 0 || pieceValue === 7 || pieceValue === 9 ? 3 :
+    return pieceValue === 7 || pieceValue === 9 ? 3 :
         pieceValue === 8 ? 4 : 2;
 }
 
@@ -68,13 +77,26 @@ function getSpace(x, y) {
     return document.getElementById(`qtr-board-space-${x}-${y}`);
 }
 
+function swapRemove(array, index) {
+    if (index >= 0 && array.length > index) {
+        const result = array[index];
+        array[index] = array[array.length - 1];
+        array.pop();
+        return result;
+    }
+}
+
+function pointAdd(p1, p2) {
+    return {
+        x: parseInt(p1.x) + parseInt(p2.x),
+        y: parseInt(p1.y) + parseInt(p2.y)
+    }
+}
+
 function *spacesAround(space) {
     let index = 0;
-    for (const {x, y} of moveDirections) {
-        yield [index++,{
-            x: parseInt(space.x) + x,
-            y: parseInt(space.y) + y
-        }];
+    for (const direction of moveDirections) {
+        yield [index++, pointAdd(space, direction)];
     }
 }
 
@@ -146,8 +168,140 @@ function* collectPaths(x, y, range) {
     }
 }
 
+class SpaceOutliner {
+    spaces = [];
+    lookup = new Map;
+
+    __key(space) {
+        return space.y * 1024 + space.x;
+    }
+
+    __findNeighbor(space, directionIndex) {
+        const neighbor = pointAdd(space, moveDirections[directionIndex]);
+        return this.lookup.get(this.__key(neighbor));
+    }
+
+    __isOpen(space, directionIndex) {
+        const neighbor = pointAdd(space, moveDirections[directionIndex]);
+        return !this.lookup.has(this.__key(neighbor));
+    }
+
+    constructor(spaces) {
+        for (const space of spaces) {
+            const x = parseInt(space instanceof HTMLElement ?
+                space.dataset.x : space.x);
+            const y = parseInt(space instanceof HTMLElement ?
+                space.dataset.y : space.y);
+            const item = {x, y};
+            this.lookup.set(this.__key(item), item);
+        }
+
+        const sides = moveDirections.length;
+
+        for (const [_, space] of this.lookup) {
+            space.openSides = [];
+            const startRange = {
+                start: 0,
+                length: 1,
+                isOpen: this.__isOpen(space, 0)
+            };
+
+            let range = startRange;
+            if (range.isOpen) {
+                space.openSides.push(range);
+            }
+
+            for (let i = 1; i < sides; ++i) {
+                const isOpen = this.__isOpen(space, i);
+                if (isOpen === range.isOpen) {
+                    ++range.length;
+                } else {
+                    range = {
+                        start: i,
+                        length: 1,
+                        isOpen
+                    };
+                    if (range.isOpen) {
+                        space.openSides.push(range);
+                    }
+                }
+            }
+
+            if (range !== startRange && range.isOpen && startRange.isOpen) {
+                startRange.start = range.start;
+                startRange.length += range.length;
+                space.openSides.pop();
+            }
+
+            if (space.openSides.length > 0) {
+                this.spaces.push(space);
+            }
+        }
+    }
+
+    popOutline() {
+        const sides = moveDirections.length;
+        const result = [];
+        const index = this.spaces.findIndex(h => h.openSides.length > 0);
+
+        if (index >= 0) {
+            let space = this.spaces[index];
+            let side = swapRemove(space.openSides, 0);
+
+            while (space && side) {
+                result.push({
+                    x: space.x,
+                    y: space.y,
+                    start: side.start,
+                    length: side.length
+                });
+
+                const connection = (side.start + side.length) % sides;
+                space = this.__findNeighbor(space, connection);
+
+                if (space) {
+                    const sideIndex = space.openSides.findIndex(s => s.start === (connection + 4) % sides);
+
+                    side = sideIndex >= 0 ? swapRemove(space.openSides, sideIndex) : null;
+                }
+            }
+        }
+        return result;
+    }
+}
+
+function buildSelection(spaces) {
+    const outliner = new SpaceOutliner(spaces);
+    const paths = [];
+
+    let outline = outliner.popOutline();
+    while (outline.length > 0) {
+        const points = [];
+
+        for (const side of outline) {
+            for (let i = 0; i < side.length; ++i) {
+                const direction = (side.start + i) % moveDirections.length;
+                const center = {
+                    x: 42 * (side.x - ((side.y + 1) >> 1))
+                        + 21 * (1 + (side.y & 0b1)),
+                    y: 630 - 42 * side.y - 21
+                }
+                const point = pointAdd(center, spaceCorners[direction]);
+                points.push(point);
+            }
+        }
+
+        const path = points.map(p => `${p.x} ${p.y}`).join("L");
+        paths.push(`M${path}Z`);
+        outline = outliner.popOutline();
+    }
+    document.getElementById("qtr-selection-svg").classList.remove("hidden");
+    document.getElementById("qtr-selection-svg-path").setAttribute("d", paths.join(" "));
+}
+
 function prepareMove(x, y, color, pieceValue) {
     const result = [];
+    const selection = [];
 
     const paths = collectPaths(x, y, getPieceRange(pieceValue));
     let item = paths.next();
@@ -164,12 +318,14 @@ function prepareMove(x, y, color, pieceValue) {
             {
                 space.classList.add("qtr-selectable");
                 result.push(path);
+                selection.push(path.space);
             }
         }
 
         item = paths.next(space && space.children.length === 0);
     }
 
+    buildSelection(selection);
     return result;
 }
 
@@ -249,6 +405,7 @@ define([
         if (this.isCurrentPlayerActive()) {
             switch (stateName) {
                 case "move": {
+                    const selection = [];
                     const movedSuits = parseInt(state.args.movedSuits);
                     const rescuedPieces = parseInt(state.args.rescuedPieces);
                     const lockedBases = playerBases[this.playerColor]
@@ -270,10 +427,13 @@ define([
                                 && (king.parentElement.classList.contains("qtr-board-space")
                                     || piece.dataset.value === "0"))
                             {
-                                piece.parentElement.classList.add("qtr-selectable");
+                                const space = piece.parentElement;
+                                space.classList.add("qtr-selectable");
+                                selection.push(space);
                             }
                         }
                     }
+                    buildSelection(selection);
                     break;
                 }
                 case "clientMove": {
@@ -286,12 +446,15 @@ define([
                     break;
                 }
                 case "retreat": {
+                    const selection = []
                     const value = state.args.piece
                     const piece = getPiece(value.suit, value.value);
                     const retreat = getSpace(value.x, value.y);
                     for (const space of [retreat, piece.parentElement]) {
                         space.classList.add("qtr-selectable");
+                        selection.push(space);
                     }
+                    buildSelection(selection);
                     break;
                 }
                 case "rescue": {
@@ -310,9 +473,12 @@ define([
                     break;
                 }
                 case "clientRescueBase": {
+                    const selection = [];
                     for (const base of getFreeBases(this.playerColor)) {
                         base.classList.add("qtr-selectable");
+                        selection.push(base);
                     }
+                    buildSelection(selection);
                     break;
                 }
             }
@@ -322,6 +488,7 @@ define([
     onLeavingState(stateName) {
         console.log(`Leaving state: ${stateName}`);
 
+        document.getElementById("qtr-selection-svg").classList.add("hidden");
         switch (stateName) {
             case "setup":
             case "clientMove":
@@ -350,17 +517,20 @@ define([
                     const spaces = document.querySelectorAll(
                         `.qtr-board-space[data-color="${this.playerColor}"]`);
                     for (const space of spaces) {
-                        space.classList.add("qtr-selectable");
+                            space.classList.add("qtr-selectable");
                     }
-                    this.addActionButton("qtr-randomize", `🎲 ${_("Randomize")}`, event => {
-                        event.stopPropagation();
-                        this.randomizePieces();
-                    });
+                    if (typeof g_ReplayFrom === "undefined" && !g_archive_mode) {
+                        this.addActionButton("qtr-randomize", `🎲 ${_("Randomize")}`, event => {
+                            event.stopPropagation();
+                            this.randomizePieces();
+                        });
+                    }
                     this.addActionButton("qtr-deploy", _("Deploy pieces"), event => {
                         event.stopPropagation();
                         this.deployPieces();
                     });
                     this.updateDeployment();
+                    buildSelection(spaces);
                     break;
                 }
                 case "move":
@@ -572,9 +742,11 @@ define([
             const row = Math.floor(Math.random() * validLines);
             const index = Math.floor(Math.random() * rows[row].length);
             const {x, y} = rows[row][index];
+            const swap = Math.floor(Math.random() * 2);
             rows[row].splice(index, 1);
 
             suits.forEach((suit, i) => {
+                i = swap ? (1 - i) : i;
                 const rowLength = 17 - y % 2;
                 const suitX = ((y + 1) >> 1) +
                     (rowLength - 1) * i + x * (1 - 2 * i);

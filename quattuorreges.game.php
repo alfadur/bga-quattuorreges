@@ -110,7 +110,6 @@ class QuattuorReges extends Table
     static function getRange(int $value): int
     {
         switch ($value) {
-            case 0:
             case 7:
             case 9: return 3;
             case 8: return 4;

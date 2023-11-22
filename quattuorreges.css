@@ -43,6 +43,31 @@
     flex-flow: column-reverse nowrap;
 }
 
+#qtr-selection-svg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+#qtr-board-container[data-color="black"] #qtr-selection-svg {
+    transform: rotate(180deg);
+}
+
+#qtr-selection-fill-pattern {
+    stroke: greenyellow;
+    stroke-width: 8px;
+}
+
+#qtr-selection-svg-path {
+    fill: url("#qtr-selection-fill-pattern");
+    fill-opacity: 0.8;
+    stroke: greenyellow;
+    stroke-width: 4px;
+}
+
 .qtr-board-row {
     display: flex;
     flex-flow: row nowrap;
@@ -60,16 +85,8 @@
     margin: 1px;
 }
 
-.qtr-board-space:hover {
-    outline-color: yellow
-}
-
-.qtr-board-space.qtr-selected {
-    background-color: green !important;
-}
-
-.qtr-board-space.qtr-selectable {
-    background-color: yellowgreen !important;
+.qtr-board-space.qtr-selectable:hover {
+    background-color: yellow !important;
 }
 
 #qtr-board-space-7-3, #qtr-board-space-15-3 {
