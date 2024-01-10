@@ -22,7 +22,7 @@ $gameinfos = array(
 'artist' => '',
 
 // Year of FIRST publication of this game. Can be negative.
-'year' => 2000,                 
+'year' => 2024,
 
 // Game publisher (use empty string if there is no publisher)
 'publisher' => '',
@@ -34,7 +34,7 @@ $gameinfos = array(
 'publisher_bgg_id' => 0,
 
 // Board game geek ID of the game
-'bgg_id' => 0,
+'bgg_id' => 406518,
 
 // Players configuration that can be played (ex: 2 to 4 players)
 'players' => [2],

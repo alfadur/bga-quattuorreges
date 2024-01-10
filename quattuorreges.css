@@ -33,6 +33,7 @@
 }
 
 #qtr-board {
+    position: relative;
     flex-grow: 0;
     flex-shrink: 0;
     display: flex;
@@ -47,8 +48,8 @@
     position: absolute;
     left: 0;
     top: 0;
-    width: 100%;
-    height: 100%;
+    width: 714px;
+    height: 630px;
     pointer-events: none;
 }
 
