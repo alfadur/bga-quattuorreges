@@ -9,39 +9,48 @@
  */
 
 :root {
-    --space-width: 40px;
-    --space-height: 40px;
+    --space-width: 42px;
+    --space-height: 42px;
 }
 
 #qtr-board-container {
     display: flex;
-    flex-flow: row nowrap;
-    justify-content: center;
+    flex-flow: column nowrap;
+    align-items: center;
+    gap: 20px
 }
 
 #qtr-board-container[data-color="black"] {
-    flex-flow: row-reverse nowrap;
+    flex-flow: column-reverse nowrap;
 }
 
 .qtr-captures {
-    flex-shrink: 1;
-    flex-grow: 0;
-    flex-basis: 200px;
+    height: calc(var(--space-height));
     display: flex;
-    flex-flow: row wrap;
+    flex-flow: row nowrap;
     align-content: center;
+    gap: 2px;
+    margin: 4px;
 }
 
 #qtr-board {
     position: relative;
     flex-grow: 0;
     flex-shrink: 0;
-    display: flex;
-    flex-flow: column nowrap;
+    width: calc(var(--space-width) * 17);
+    height: calc(var(--space-height) * 15);
 }
 
-#qtr-board-container[data-color="red"] #qtr-board {
-    flex-flow: column-reverse nowrap;
+#qtr-board-background {
+    position: absolute;
+    left: -20px;
+    top: -20px;
+    width: calc(var(--space-width) * 17 + 40px);
+    height: calc(var(--space-height) * 15 + 40px);
+    background-image: url("img/board.jpg");
+    background-size: cover;
+    box-shadow: 0 4px 6px black;
+    pointer-events: none;
 }
 
 #qtr-selection-svg {
@@ -69,6 +78,16 @@
     stroke-width: 4px;
 }
 
+#qtr-board-rows {
+    position: relative;
+    display: flex;
+    flex-flow: column nowrap;
+}
+
+#qtr-board-container[data-color="red"] #qtr-board-rows {
+    flex-flow: column-reverse nowrap;
+}
+
 .qtr-board-row {
     display: flex;
     flex-flow: row nowrap;
@@ -82,27 +101,14 @@
 .qtr-board-space {
     width: var(--space-width);
     height: var(--space-height);
-    outline: dashed #715b40 2px;
-    margin: 1px;
 }
 
 .qtr-board-space.qtr-selectable:hover {
-    background-color: yellow !important;
-}
-
-#qtr-board-space-7-3, #qtr-board-space-15-3 {
-    background-color: #f008;
-}
-
-#qtr-board-space-8-11, #qtr-board-space-16-11 {
-    background-color: #0008;
-}
-
-.qtr-board-space[data-y="0"], .qtr-board-space[data-y="14"] {
-    background-color: #5558;
+    background-color: yellow;
 }
 
 .qtr-piece {
+    position: relative;
     --sprite-x: 0;
     --sprite-y: 0;
     width: calc(var(--space-height) * 62 / 88);
