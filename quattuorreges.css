@@ -161,10 +161,10 @@
     offset-rotate: 0deg;
     offset-anchor: top left;
     animation-name: follow-path;
+    offset-distance: 100%;
 }
 
 @keyframes follow-path {
-    from { offset-distance: 100%; }
     to { offset-distance: 0; }
 }
 

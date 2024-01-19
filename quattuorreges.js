@@ -820,10 +820,20 @@ define([
         }, () => {});
     },
 
-    animateTranslation(nodes, destinations) {
+    animateTranslation(nodes, destinations, delay) {
         if (!Array.isArray(nodes)) {
-            nodes = [nodes];
-            destinations = [destinations];
+            if (window.getComputedStyle(nodes.parentElement).display === "flex") {
+                const siblings = Array.from(nodes.parentElement.children).filter(n => n !== nodes);
+                nodes = [nodes, ...siblings];
+                destinations = [destinations, ...siblings.map(n => n.parentElement)];
+            } else if (window.getComputedStyle(destinations).display === "flex") {
+                const siblings = Array.from(destinations.children).filter(n => n !== nodes);
+                nodes = [nodes, ...siblings];
+                destinations = [destinations, ...siblings.map(n => n.parentElement)];
+            } else {
+                nodes = [nodes];
+                destinations = [destinations];
+            }
         }
 
         const useOffsetAnimation = this.useOffsetAnimation;
@@ -837,13 +847,16 @@ define([
                 node.classList.remove("qtr-moving-simple");
                 node.style.transform = "none";
             }
+            node.style.animationDelay = "0";
         }
 
         nodes.forEach(stopAnimation);
         const startRects = nodes.map(node =>
             node.getBoundingClientRect());
         nodes.forEach((node, index) => {
-            destinations[index].appendChild(node);
+            if (node.parentElement !== destinations[index]) {
+                destinations[index].appendChild(node)
+            }
         });
 
         nodes.forEach((node, index) => {
@@ -853,6 +866,10 @@ define([
                 endRect.left - startRect.left,
                 endRect.top - startRect.top
             ];
+
+            if (typeof delay === "number") {
+                node.style.animationDelay = `${delay * index}ms`;
+            }
 
             if (this.useOffsetAnimation) {
                 node.style.offsetPath =
@@ -932,12 +949,10 @@ define([
                     m2.position - m1.position;
             });
 
-            const timeStep = 200;
-            moves.forEach((m, i) =>
-                setTimeout(
-                    () => this.animateTranslation(m.piece, m.space),
-                    i * timeStep)
-            );
+            const timeStep = 100;
+            const pieces = moves.map(m => m.piece);
+            const spaces = moves.map(m => m.space);
+            this.animateTranslation(pieces, spaces, timeStep);
 
             this.notifqueue.setSynchronousDuration(600 + (moves.length - 1) * timeStep);
         })
