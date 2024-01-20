@@ -99,6 +99,7 @@
 }
 
 .qtr-board-space {
+    position:relative;
     width: var(--space-width);
     height: var(--space-height);
 }
@@ -122,6 +123,14 @@
         calc(-1 * var(--sprite-x) * var(--space-height) * 62 / 88)
         calc(-1 * var(--sprite-y) * var(--space-height));
     filter: drop-shadow(0 2px 2px black);
+}
+
+.qtr-board-space .qtr-piece {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
 }
 
 .qtr-piece[data-suit="0"] { --sprite-y: 0; }
