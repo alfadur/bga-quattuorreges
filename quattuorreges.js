@@ -585,6 +585,7 @@ define([
                 case "setup": {
                     this.unselectPiece();
                     clearTag("qtr-selectable");
+                    document.getElementById("qtr-selection-svg").classList.add("hidden");
                     this.addActionButton("qtr-cancel", _("Cancel"), event => {
                         dojo.stopEvent(event);
                         this.cancelDeploy();
@@ -847,7 +848,7 @@ define([
                 node.classList.remove("qtr-moving-simple");
                 node.style.transform = "none";
             }
-            node.style.animationDelay = "0";
+            node.style.animationDelay = "unset";
         }
 
         nodes.forEach(stopAnimation);
@@ -892,18 +893,6 @@ define([
 
     setupNotifications() {
         console.log("notifications subscriptions setup");
-
-        function getPath(data, ...path) {
-            let source = data.args;
-            for (const item of path) {
-                if (item in source) {
-                    source = source[item];
-                } else {
-                    return;
-                }
-            }
-            return source;
-        }
 
         dojo.subscribe('update', this, (data) => {
             const moves = {};
