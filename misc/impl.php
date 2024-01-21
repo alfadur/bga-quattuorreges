@@ -53,6 +53,7 @@ class Table {
     static function incStat(int $amount, string $name, ?string $playerId = null): void {}
     static function setStat(int $value, string $name, ?string $playerId = null): void {}
     static function getStat(string $name, ?string $playerId = null): string { return ' ';}
+    static function giveExtraTime(string $playerId): void {}
 }
 
 class game_view_page {

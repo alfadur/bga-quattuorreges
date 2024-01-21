@@ -214,6 +214,7 @@ class QuattuorReges extends Table
 
         $args = implode(',', $values);
         self::DbQuery("INSERT INTO piece(suit, value, x, y) VALUES $args");
+        self::giveExtraTime($playerId);
         $this->gamestate->setPlayerNonMultiactive($playerId, '');
     }
 
@@ -513,6 +514,7 @@ class QuattuorReges extends Table
         self::setGameStateValue(Globals::MOVED_SUITS, 0);
         self::setGameStateValue(Globals::RESCUED_PIECES, 0xFFFFFFFF);
         self::incStat(1, Stats::TURNS_NUMBER);
+        self::giveExtraTime(self::getActivePlayerId());
         self::activeNextPlayer();
         $this->gamestate->nextState('');
     }
