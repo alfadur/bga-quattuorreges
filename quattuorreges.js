@@ -335,7 +335,6 @@ define([
     "ebg/counter"
 ], (dojo, declare) => declare("bgagame.quattuorreges", ebg.core.gamegui, {
     constructor() {
-        console.log("quattuorreges constructor");
         try {
             this.useOffsetAnimation = CSS.supports("offset-path", "path('M 0 0')");
         } catch (e) {
@@ -344,8 +343,6 @@ define([
     },
 
     setup(data) {
-        console.log("Starting game setup");
-
         const playerId = this.getCurrentPlayerId().toString();
         const order = playerId in data.players ?
             parseInt(data.players[playerId].no) - 1 :
@@ -395,13 +392,9 @@ define([
         }
 
         this.setupNotifications();
-
-        console.log("Ending game setup");
     },
 
     onEnteringState(stateName, state) {
-        console.log(`Entering state: ${stateName}`);
-
         if (this.isCurrentPlayerActive()) {
             switch (stateName) {
                 case "move": {
@@ -458,7 +451,6 @@ define([
                     break;
                 }
                 case "rescue": {
-                    console.log(state.args);
                     this.rescueCount = Math.min(
                         parseInt(state.args.rescueCount),
                         getFreeBases(this.playerColor).length,
@@ -486,8 +478,6 @@ define([
     },
 
     onLeavingState(stateName) {
-        console.log(`Leaving state: ${stateName}`);
-
         document.getElementById("qtr-selection-svg").classList.add("hidden");
         switch (stateName) {
             case "setup":
@@ -509,8 +499,6 @@ define([
     },
 
     onUpdateActionButtons(stateName, args) {
-        console.log(`onUpdateActionButtons: ${stateName}`);
-
         if (this.isCurrentPlayerActive()) {
             switch (stateName) {
                 case "setup": {
@@ -649,7 +637,6 @@ define([
     },
 
     onSpaceClick(space, x, y) {
-        console.log(`Space click (${x}, ${y})`);
         if (!space.classList.contains("qtr-selectable")) {
             return;
         }
@@ -892,8 +879,6 @@ define([
     },
 
     setupNotifications() {
-        console.log("notifications subscriptions setup");
-
         dojo.subscribe('update', this, (data) => {
             const moves = {};
             for (const move of data.args.moves) {
@@ -914,7 +899,6 @@ define([
         });
 
         dojo.subscribe("deploy", this, (data) => {
-            console.log(data.args);
             const moves = [];
 
             for (const item of data.args.pieces) {
