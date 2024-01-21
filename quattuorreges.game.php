@@ -62,6 +62,14 @@ class QuattuorReges extends Table
 
         self::reloadPlayersBasicInfos();
 
+        foreach (Stats::TABLE_STATS_LIST as $stat) {
+            self::initStat('table', $stat, 0);
+        }
+
+        foreach (Stats::PLAYER_STATS_LIST as $stat) {
+            self::initStat('player', $stat, 0);
+        }
+
         /************ Start the game initialization *****/
 
         $settings = [
@@ -471,6 +479,7 @@ class QuattuorReges extends Table
     function stNextMove(): void
     {
         if (self::checkGameEnd()) {
+            self::incStat(1, Stats::TURNS_NUMBER);
             $this->gamestate->nextState('end');
             return;
         }
@@ -503,6 +512,7 @@ class QuattuorReges extends Table
         self::setGameStateValue(Globals::FIRST_MOVE, 0);
         self::setGameStateValue(Globals::MOVED_SUITS, 0);
         self::setGameStateValue(Globals::RESCUED_PIECES, 0xFFFFFFFF);
+        self::incStat(1, Stats::TURNS_NUMBER);
         self::activeNextPlayer();
         $this->gamestate->nextState('');
     }

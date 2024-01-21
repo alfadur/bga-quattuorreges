@@ -48,6 +48,38 @@ interface Globals
     const RESCUED_PIECES_ID = 14;
 }
 
+interface Stats {
+    const TURNS_NUMBER = 'turns_number';
+
+    const TABLE_STATS_LIST = [
+        self::TURNS_NUMBER
+    ];
+
+    const NUMBER_MOVES = 'number_moves';
+    const COURT_MOVES = 'court_moves';
+    const ACE_MOVES = 'ace_moves';
+    const NUMBER_CAPTURES = 'number_captures';
+    const COURT_CAPTURES = 'court_captures';
+    const ACE_CAPTURES = 'ace_captures';
+    const NUMBER_RESCUES = 'number_rescues';
+    const COURT_RESCUES = 'court_rescues';
+    const ACE_RESCUES = 'ace_rescues';
+    const ACE_RETREATS = 'ace_retreats';
+    
+    const PLAYER_STATS_LIST = [
+        self::NUMBER_MOVES,
+        self::COURT_MOVES,
+        self::ACE_MOVES,
+        self::NUMBER_CAPTURES,
+        self::COURT_CAPTURES,
+        self::ACE_CAPTURES,
+        self::NUMBER_RESCUES,
+        self::COURT_RESCUES,
+        self::ACE_RESCUES,
+        self::ACE_RETREATS,
+    ];
+}
+
 const HEX_DIRECTIONS = [
     [1, 0], [1, 1], [0, 1], [-1, 0], [-1, -1], [0, -1]
 ];

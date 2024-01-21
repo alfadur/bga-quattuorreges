@@ -52,9 +52,9 @@
 $machinestates = [
     // The initial state. Please do not modify.
     State::GAME_START => [
-        Fsm::NAME => "gameSetup",
+        Fsm::NAME => 'gameSetup',
         Fsm::TYPE => FsmType::MANAGER,
-        Fsm::DESCRIPTION => "",
+        Fsm::DESCRIPTION => '',
         Fsm::ACTION => 'stGameSetup',
         Fsm::TRANSITIONS => ['' => State::SETUP]
     ],

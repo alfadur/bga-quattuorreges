@@ -33,6 +33,21 @@ trait DbUndoLog {
         }
     }
 
+    function logUpdateStat(
+        array &$undo, string $name, int $value = 1, bool $increment = true): void
+    {
+        $playerId = self::getActivePlayerId();
+        $undo['stats'][] = [
+            $name,
+            $playerId,
+            self::getStat($name, $playerId)
+        ];
+        if ($increment) {
+            self::incStat($value, $name, $playerId);
+        } else {
+            self::setStat($value, $name, $playerId);
+        }
+    }
     function logSaveUndo($undo): void
     {
         $json = str_replace("\\", "\\\\", json_encode($undo));
@@ -136,6 +151,16 @@ trait DbUndoLog {
             clienttranslate('${player_name} moves ${pieceIcon} to (${x},${y})');
         self::notifyAllPlayers('update', $message, $args);
 
+        $value = (int)$piece['value'];
+        $moveStat = $value === 0 ? Stats::ACE_MOVES :
+            ($value <= 10 ? Stats::NUMBER_MOVES : Stats::COURT_MOVES);
+        self::logUpdateStat($undo, $moveStat);
+        if ($captured) {
+            $captureStat = $value === 0 ? Stats::COURT_CAPTURES :
+                ($value <= 10 ? Stats::NUMBER_CAPTURES : Stats::COURT_CAPTURES);;
+            self::logUpdateStat($undo, $captureStat);
+        }
+
         if (!$retreat && $rescueCount > 0) {
             $this->logCapture($undo, $piece, $rescueCount);
         } else {
@@ -203,6 +228,8 @@ trait DbUndoLog {
                     'moves' => [$piece]
                 ]
             ];
+
+            self::logUpdateStat($undo, Stats::ACE_RETREATS);
         } else if ($rescueCount > 0) {
             $this->logCapture($undo, $piece, $rescueCount);
             $undo['notification'] = [
@@ -238,10 +265,18 @@ trait DbUndoLog {
             $undo['queries'] = [];
             $deletes = [];
 
+            $rescueStats = [
+                Stats::ACE_RESCUES => 0,
+                Stats::COURT_RESCUES => 0,
+                Stats::NUMBER_RESCUES => 0
+            ];
+
             foreach ($rescues as $rescuedPiece)
             {
                 ['suit' => $suit, 'value' => $value, 'x' => $x, 'y' => $y] =
                     $rescuedPiece;
+                $value = (int)$value;
+
                 $inserts[] = "($suit, $value, $x, $y)";
                 $moves[] = $rescuedPiece;
                 $icons[] = "$suit,$value";
@@ -249,6 +284,14 @@ trait DbUndoLog {
                 $undo['notification']['args']['moves'][] =
                     ['suit' => $suit, 'value' => $value];
                 $deletes[] = "x = $x AND y = $y";
+
+                $rescueStat = $value === 0 ? Stats::ACE_RESCUES :
+                    ($value <= 10 ? Stats::NUMBER_RESCUES : Stats::COURT_RESCUES);
+                ++$rescueStats[$rescueStat];
+            }
+
+            foreach($rescueStats as $stat => $count) {
+                self::logUpdateStat($undo, $stat, $count);
             }
 
             $deleteArgs = implode(" OR ", $deletes);
@@ -287,6 +330,12 @@ trait DbUndoLog {
         if (array_key_exists('globals', $undo)) {
             foreach ($undo['globals'] as [$name, $value]) {
                 self::setGameStateValue($name, $value);
+            }
+        }
+
+        if (array_key_exists('stats', $undo)) {
+            foreach ($undo['stats'] as [$name, $playerId, $value]) {
+                self::setStat($value, $name, $playerId);
             }
         }
 

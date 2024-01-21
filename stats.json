@@ -1,0 +1,61 @@
+{
+  "table": {
+    "turns_number": {
+      "id": 10,
+      "name": "Number of turns",
+      "type": "int"
+    }
+  },
+  "player": {
+    "number_moves": {
+      "id": 11,
+      "name": "Moves with number pieces",
+      "type": "int"
+    },
+    "court_moves": {
+      "id": 12,
+      "name": "Moves with court pieces",
+      "type": "int"
+    },
+    "ace_moves": {
+      "id": 13,
+      "name": "Moves with Ace",
+      "type": "int"
+    },
+    "number_captures": {
+      "id": 14,
+      "name": "Captures with number pieces",
+      "type": "int"
+    },
+    "court_captures": {
+      "id": 15,
+      "name": "Captures with court pieces",
+      "type": "int"
+    },
+    "ace_captures": {
+      "id": 16,
+      "name": "Captures with Ace",
+      "type": "int"
+    },
+    "number_rescues": {
+      "id": 17,
+      "name": "Number pieces rescued",
+      "type": "int"
+    },
+    "court_rescues": {
+      "id": 18,
+      "name": "Court pieces rescued",
+      "type": "int"
+    },
+    "ace_rescues": {
+      "id": 19,
+      "name": "Aces rescued",
+      "type": "int"
+    },
+    "ace_retreats": {
+      "id": 20,
+      "name": "Retreats with Ace",
+      "type": "int"
+    }
+  }
+}

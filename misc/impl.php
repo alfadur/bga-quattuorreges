@@ -49,6 +49,10 @@ class Table {
     static function checkAction(string $action): void {}
     static function notifyAllPlayers(string $name, string $text, array $args): void {}
     static function notifyPlayers(string $playerId, string $name, string $text, array $args): void {}
+    static function initStat(string $type, string $name, int $value): void {}
+    static function incStat(int $amount, string $name, ?string $playerId = null): void {}
+    static function setStat(int $value, string $name, ?string $playerId = null): void {}
+    static function getStat(string $name, ?string $playerId = null): string { return ' ';}
 }
 
 class game_view_page {
