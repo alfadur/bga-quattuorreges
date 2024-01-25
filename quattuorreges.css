@@ -8,9 +8,12 @@
  * -----
  */
 
-#qtr-content {
+:root {
     --space-width: 42px;
     --space-height: 42px;
+}
+
+#qtr-content {
     container: qtr-content / inline-size;
     width: 100%;
 }
