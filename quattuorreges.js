@@ -46,6 +46,13 @@ const spaceCorners = Object.freeze([
     {x: 0, y: 20},
 ]);
 
+function createElement(parent, html) {
+    const element = parent.appendChild(
+        document.createElement("div"));
+    element.outerHTML = html;
+    return parent.lastElementChild;
+}
+
 function clearTag(tag) {
     for (const element of document.querySelectorAll(`.${tag}`)) {
         element.classList.remove(tag);
@@ -389,6 +396,22 @@ define([
         for (const color of Object.keys(playerBases)) {
             playerBases[color].forEach((id, index) =>
                 document.getElementById(id).dataset.baseIndex = index.toString());
+        }
+
+        if (!this.isSpectator) {
+            const playerBoard = document.getElementById(
+                `player_board_${this.getCurrentPlayerId()}`);
+            const help = createElement(playerBoard,
+                `<div id="qtr-capture-help"></div>`);
+            help.addEventListener("click", event => {
+                event.stopPropagation();
+                const dialog = new ebg.popindialog();
+                dialog.create("qtr-capture-dialog");
+                dialog.setTitle(_("Capture Diagram"));
+                dialog.setContent(`<div class="qtr-capture-diagram"></div>`);
+                dialog.show();
+            });
+            this.addTooltip(help.getAttribute("id"), "", "Show piece capture diagram");
         }
 
         this.setupNotifications();

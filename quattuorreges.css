@@ -215,3 +215,28 @@
         flex-flow: column nowrap !important;;
     }
 }
+
+#qtr-capture-help {
+    width: calc(var(--space-height) * 62 / 88);
+    height: var(--space-height);
+    margin-top: 6px;
+    background-image: url("img/capture.png");
+    background-size:
+        calc(calc(var(--space-height) * 62 / 88) * 10)
+        calc(var(--space-height) * 7.75);
+    background-position:
+        calc(calc(var(--space-height) * 62 / 88) * -4.5)
+        calc(var(--space-height) * -3.6);
+    transition: scale 200ms ease-out;
+}
+
+#qtr-capture-help:hover {
+    scale: 1.2;
+}
+
+.qtr-capture-diagram {
+    width: 475px;
+    height: 500px;
+    background-image: url("img/capture.png");
+    background-size: cover;
+}
