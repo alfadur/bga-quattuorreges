@@ -141,7 +141,10 @@
     background-position:
         calc(-1 * var(--sprite-x) * var(--space-height) * 62 / 88)
         calc(-1 * var(--sprite-y) * var(--space-height));
-    filter: drop-shadow(0 2px 2px black);
+    filter: grayscale(0) drop-shadow(0 2px 2px black);
+    transition:
+        filter 200ms ease-in-out,
+        opacity 200ms ease-in-out;
 }
 
 .qtr-board-space .qtr-piece {
@@ -176,6 +179,11 @@
     margin-top: -3px;
     position: relative;
     z-index: 1;
+}
+
+.qtr-piece.qtr-inactive {
+    filter: grayscale(1) drop-shadow(0 2px 2px black);
+    opacity: 0.85;
 }
 
 .qtr-moving, .qtr-moving-simple {

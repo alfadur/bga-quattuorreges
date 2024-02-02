@@ -328,10 +328,11 @@ function isCapturable(x, y, oldX, oldY, color, pieceValue, range) {
             `qtr-board-space-${path.space.x}-${path.space.y}`);
 
         if (space && space.children.length > 0) {
-            const piece = space.firstChild;
-            if (path.steps.length <= getPieceRange(piece.dataset.value)
+            const piece = space.firstElementChild;
+            if (!piece.classList.contains("qtr-inactive")
+                && path.steps.length <= getPieceRange(piece.dataset.value)
                 && piece.dataset.color !== color
-                &&  canCapture(piece.dataset.value, pieceValue))
+                && canCapture(piece.dataset.value, pieceValue))
             {
                 return true;
             }
@@ -357,7 +358,7 @@ function prepareMove(x, y, color, pieceValue) {
         const space = document.getElementById(
             `qtr-board-space-${path.space.x}-${path.space.y}`);
         if (space) {
-            const target = space.firstChild;
+            const target = space.firstElementChild;
             if (!target
                 || (color !== target.dataset.color &&
                     canCapture(pieceValue, target.dataset.value)))
@@ -426,6 +427,13 @@ define([
                     document.querySelector(`.qtr-captures[data-color=${getPlayerColor(suit)}]`)
                         .appendChild(element);
                     element.outerHTML = createPiece(suit, value);
+                }
+            }
+
+            if (data.gamestate.name !== "setup") {
+                const king = getPiece(suit, 13);
+                if (!king.parentElement.classList.contains("qtr-board-space")) {
+                    this.updateSuitActivity(suit, false);
                 }
             }
         }
@@ -684,6 +692,22 @@ define([
 
         document.getElementById("qtr-deploy").classList.toggle(
             "disabled", hasPieces);
+    },
+
+    updateSuitActivity(suit, enable) {
+        const suitPieces = document.querySelectorAll(`.qtr-piece[data-suit="${suit}"]`);
+        if (enable) {
+            for (const otherPiece of suitPieces) {
+                otherPiece.classList.remove("qtr-inactive");
+            }
+        } else {
+            for (const otherPiece of suitPieces) {
+                const value = pieceValues[otherPiece.dataset.value];
+                if (value !== "A" && value !== "K") {
+                    otherPiece.classList.add("qtr-inactive");
+                }
+            }
+        }
     },
 
     addRescuedPiece(piece) {
@@ -959,10 +983,14 @@ define([
                 const space = getSpace(move.x, move.y);
                 if (!space && piece.parentElement.classList.contains("qtr-board-space")) {
                     const captures = document.querySelector(
-                        `.qtr-captures[data-color="${piece.dataset.color}"]`)
+                        `.qtr-captures[data-color="${piece.dataset.color}"]`);
                     this.animateTranslation(piece, captures);
                 } else if (space && space !== piece.parentElement) {
                     this.animateTranslation(piece, space);
+                }
+
+                if (pieceValues[move.value] === "K") {
+                    this.updateSuitActivity(move.suit, space);
                 }
             }
         });
