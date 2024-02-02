@@ -277,7 +277,7 @@ class SpaceOutliner {
     }
 }
 
-function buildSelection(spaces) {
+function buildPath(spaces) {
     const outliner = new SpaceOutliner(spaces);
     const paths = [];
 
@@ -302,13 +302,52 @@ function buildSelection(spaces) {
         paths.push(`M${path}Z`);
         outline = outliner.popOutline();
     }
+    return paths;
+}
+
+
+function buildSelection(spaces) {
+    const paths = buildPath(spaces);
     document.getElementById("qtr-selection-svg").classList.remove("hidden");
     document.getElementById("qtr-selection-svg-path").setAttribute("d", paths.join(" "));
+}
+
+function buildWarning(spaces) {
+    const paths = buildPath(spaces);
+    document.getElementById("qtr-warning-svg").classList.remove("hidden");
+    document.getElementById("qtr-warning-svg-path").setAttribute("d", paths.join(" "));
+}
+
+function isCapturable(x, y, oldX, oldY, color, pieceValue, range) {
+    const paths = collectPaths(x, y, range)
+    let item = paths.next();
+
+    while (!item.done) {
+        const path = item.value;
+        const space = document.getElementById(
+            `qtr-board-space-${path.space.x}-${path.space.y}`);
+
+        if (space && space.children.length > 0) {
+            const piece = space.firstChild;
+            if (path.steps.length <= getPieceRange(piece.dataset.value)
+                && piece.dataset.color !== color
+                &&  canCapture(piece.dataset.value, pieceValue))
+            {
+                return true;
+            }
+        }
+
+        const isPassable = path.space.x === parseInt(oldX) && path.space.y === parseInt(oldY)
+            || space && space.children.length === 0
+        item = paths.next(isPassable);
+    }
+    return false;
 }
 
 function prepareMove(x, y, color, pieceValue) {
     const result = [];
     const selection = [];
+    const warning = [];
 
     const paths = collectPaths(x, y, getPieceRange(pieceValue));
     let item = paths.next();
@@ -326,6 +365,10 @@ function prepareMove(x, y, color, pieceValue) {
                 space.classList.add("qtr-selectable");
                 result.push(path);
                 selection.push(path.space);
+
+                if (isCapturable(path.space.x, path.space.y, x, y, color, pieceValue, 4)) {
+                    warning.push(path.space);
+                }
             }
         }
 
@@ -333,6 +376,7 @@ function prepareMove(x, y, color, pieceValue) {
     }
 
     buildSelection(selection);
+    buildWarning(warning);
     return result;
 }
 
@@ -501,7 +545,9 @@ define([
     },
 
     onLeavingState(stateName) {
-        document.getElementById("qtr-selection-svg").classList.add("hidden");
+        for (const svg of document.querySelectorAll(".qtr-board-svg")) {
+            svg.classList.add("hidden");
+        }
         switch (stateName) {
             case "setup":
             case "clientMove":
