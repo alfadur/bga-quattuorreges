@@ -685,7 +685,7 @@ define([
         const hasPieces = captures.length > 0;
 
         if (hasPieces) {
-            this.selectPiece(captures[0]);
+            this.selectPiece(captures[captures.length - 1]);
         } else if (!this.selectedPiece) {
             this.selectPiece(document.querySelector(
                 `.qtr-piece[data-color="${this.playerColor}"]`));

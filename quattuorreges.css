@@ -240,9 +240,15 @@
 
     .qtr-captures {
         width: calc(2.1 * var(--space-height) * 62 / 88) !important;;
-        height: 100%;
-        flex-flow: row wrap !important;
-        align-content: center;
+        height: 350px;
+        flex-flow: column wrap !important;
+        align-content: flex-start;
+        justify-content: center;
+    }
+
+    #qtr-board-container[data-color="red"] .qtr-captures[data-color="black"],
+    #qtr-board-container[data-color="black"] .qtr-captures[data-color="red"] {
+        align-content: flex-end;
     }
 }
 
