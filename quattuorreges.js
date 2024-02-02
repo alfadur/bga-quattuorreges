@@ -365,10 +365,11 @@ function prepareMove(x, y, color, pieceValue) {
             {
                 space.classList.add("qtr-selectable");
                 result.push(path);
-                selection.push(path.space);
 
                 if (isCapturable(path.space.x, path.space.y, x, y, color, pieceValue, 4)) {
                     warning.push(path.space);
+                } else {
+                    selection.push(path.space);
                 }
             }
         }

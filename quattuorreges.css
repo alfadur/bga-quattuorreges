@@ -76,11 +76,6 @@
     stroke-width: 8px;
 }
 
-#qtr-warning-fill-pattern {
-    stroke: #f2d800;
-    stroke-width: 6px;
-}
-
 #qtr-selection-svg-path, #qtr-selection-fill-pattern {
     stroke: #6fe35f;
 }
@@ -91,10 +86,18 @@
     stroke-width: 4px;
 }
 
+#qtr-warning-fill-pattern {
+    stroke-width: 6px;
+}
+
+#qtr-warning-svg-path, #qtr-warning-fill-pattern {
+    stroke: #f2d329;
+}
+
 #qtr-warning-svg-path {
     fill: url("#qtr-warning-fill-pattern");
     fill-opacity: 0.6;
-    stroke: none;
+    stroke-width: 4px;
 }
 
 #qtr-board-rows {
