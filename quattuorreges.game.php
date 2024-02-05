@@ -557,7 +557,7 @@ class QuattuorReges extends Table
 
         if ($state['type'] === FsmType::SINGLE_PLAYER) {
             self::setGameStateValue(Globals::MOVED_SUITS, 0b11);
-            $this->gamestate->jumpToState(State::NEXT_MOVE);
+            $this->gamestate->jumpToState(State::NEXT_TURN);
         } else if ($state['type'] === FsmType::MULTIPLE_PLAYERS) {
             $this->gamestate->setPlayerNonMultiactive($activePlayer, '');
         } else {
