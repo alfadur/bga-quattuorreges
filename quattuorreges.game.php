@@ -203,6 +203,9 @@ class QuattuorReges extends Table
         $side = self::getPlayerNoById($playerId) - 1;
         $suitOwner = $side << 1;
 
+        $ownerMask = Suit::OWNER_MASK;
+        self::DbQuery("DELETE FROM piece WHERE (suit & $ownerMask) = $suitOwner");
+
         foreach ($deployments as $i => [$x, $y]) {
             if (!self::isValidDeploymentSpace($x, $y, $side)) {
                 throw new BgaUserException('Invalid space');
@@ -215,6 +218,11 @@ class QuattuorReges extends Table
         $args = implode(',', $values);
         self::DbQuery("INSERT INTO piece(suit, value, x, y) VALUES $args");
         self::giveExtraTime($playerId);
+
+        self::notifyAllPlayers('message',
+            clienttranslate('${player_name} deploys pieces'),
+            ['player_name' => self::getPlayerNameById($playerId)]);
+
         $this->gamestate->setPlayerNonMultiactive($playerId, '');
     }
 
@@ -224,10 +232,10 @@ class QuattuorReges extends Table
         if (!(self::isSpectator() || self::isCurrentPlayerZombie())) {
             $playerId = (int)self::getCurrentPlayerId();
             if (!$this->gamestate->isPlayerActive($playerId)) {
-                $suitOwner = (self::getPlayerNoById($playerId) - 1) << 1;
-                self::DbQuery(
-                    "DELETE FROM piece WHERE suit & $suitOwner <> 0");
                 $this->gamestate->setPlayersMultiactive([$playerId], '');
+                self::notifyAllPlayers('message',
+                    clienttranslate('${player_name} cancels piece deployment'),
+                    ['player_name' => self::getPlayerNameById($playerId)]);
             }
         }
     }
