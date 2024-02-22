@@ -99,10 +99,9 @@ trait DbUndoLog {
         $args = [
             'player_name' => self::getActivePlayerName(),
             'moves' => [],
-            'x' => $target['x'],
-            'y' => $target['y'],
+            'positionIcon' => "$piece[x],$piece[y]",
             'pieceIcon' => "$piece[suit],$piece[value]",
-            'preserve' => ['pieceIcon', 'x', 'y']
+            'preserve' => ['pieceIcon', 'positionIcon']
         ];
 
         if ($captured) {
@@ -147,8 +146,8 @@ trait DbUndoLog {
         ];
 
         $message = $captured ?
-            clienttranslate('${player_name} moves ${pieceIcon} to (${x},${y}) and captures ${pieceIconC}') :
-            clienttranslate('${player_name} moves ${pieceIcon} to (${x},${y})');
+            clienttranslate('${player_name} moves ${pieceIcon} to ${positionIcon} and captures ${pieceIconC}') :
+            clienttranslate('${player_name} moves ${pieceIcon} to ${positionIcon}');
         self::notifyAllPlayers('update', $message, $args);
 
         $value = (int)$piece['value'];

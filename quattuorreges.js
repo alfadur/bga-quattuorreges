@@ -393,6 +393,7 @@ define([
         } catch (e) {
             this.useOffsetAnimation = false;
         }
+        this.phantomRescue = null;
     },
 
     setup(data) {
@@ -632,6 +633,12 @@ define([
             if (cancellableStates.indexOf(stateName) >= 0) {
                 this.addActionButton("qtr-cancel", _("Cancel"), event => {
                     event.stopPropagation();
+                    if (this.phantomRescue !== null) {
+                        const color = this.phantomRescue.dataset.color;
+                        this.animateTranslation(this.phantomRescue,
+                            document.querySelector(`.qtr-captures[data-color="${color}"]`));
+                        this.phantomRescue = null;
+                    }
                     this.restoreServerGameState();
                 }, null, null, "gray");
             }
@@ -776,6 +783,7 @@ define([
             });
             this.animateTranslation(this.selectedPiece, space);
             if (--this.rescueCount > 0) {
+                this.phantomRescue = this.selectedPiece;
                 this.setClientState("clientRescuePiece", {
                     descriptionmyturn: _("${you} must select a piece to rescue"),
                     possibleactions: ["clientRescuePiece"]
