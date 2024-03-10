@@ -10,6 +10,11 @@
 
 const deploymentValues = Object.freeze([7, 8, 9, 10, 11, 12, 13, 0]);
 const deploymentSuits = Object.freeze([0, 1, 2, 3]);
+const deploymentRows = Object.freeze([
+    [0, 13],
+    [7, 8, 11],
+    [9, 10, 12]
+]);
 
 const pieceValues = Object.freeze({
     "7": "7",
@@ -590,7 +595,7 @@ define([
                         this.addActionButton("qtr-randomize", `🎲 ${_("Randomize")}`, event => {
                             event.stopPropagation();
                             this.randomizePieces();
-                        });
+                        }, null, null, "gray");
                     }
                     this.addActionButton("qtr-deploy", _("Deploy pieces"), event => {
                         event.stopPropagation();
@@ -612,7 +617,7 @@ define([
                         if (stateName === "retreat") {
                             this.retreat(false);
                         } else if (stateName !== "move") {
-                            this.rescuePieces(this.rescuedPieces)
+                            this.rescuePieces(this.rescuedPieces);
                         } else {
                             this.pass();
                         }
@@ -818,33 +823,35 @@ define([
         const side = this.playerColor === "red" ? 0 : 1;
         const suits = [side * 2, side * 2 + 1];
 
-        const rows = [0, 1, 2, 3].map(n => {
-            const y = 14 * side + (n + 2) * (1 - 2 * side);
-            return range((17 - y % 2) >> 1)
-                .map(x => ({x, y}));
+        const rows = [0, 1, 2].map(n => {
+            const y = 14 * side + (n + 3) * (1 - 2 * side);
+            return range(Math.ceil((17 - y % 2) / 2) - 2)
+                .map(x => ({x: x + 1, y}))
+                .filter(({x}) => n > 0 || x !== 2 && x !== 5);
         });
 
         const animationNodes = [];
         const animationDestinations = [];
 
-        for (const value of deploymentValues) {
-            const validLines = value === 13 ? 2 : value === 0 ? 3 : 4;
-            const row = Math.floor(Math.random() * validLines);
-            const index = Math.floor(Math.random() * rows[row].length);
-            const {x, y} = rows[row][index];
-            const swap = Math.floor(Math.random() * 2);
-            rows[row].splice(index, 1);
+        rows.forEach((row, rowIndex) => {
+            const values = deploymentRows[rowIndex];
 
-            suits.forEach((suit, i) => {
-                i = swap ? (1 - i) : i;
-                const rowLength = 17 - y % 2;
-                const suitX = ((y + 1) >> 1) +
-                    (rowLength - 1) * i + x * (1 - 2 * i);
+            for (const value of values) {
+                const [{x, y}] = row.splice(
+                    Math.floor(Math.random() * row.length), 1);
+                const swap = Math.floor(Math.random() * 2);
 
-                animationNodes.push(getPiece(suit, value));
-                animationDestinations.push(getSpace(suitX, y));
-            });
-        }
+                suits.forEach((suit, suitIndex) => {
+                    suitIndex = swap ? (1 - suitIndex) : suitIndex;
+                    const rowLength = 17 - y % 2;
+                    const suitX = ((y + 1) >> 1) +
+                        (rowLength - 1) * suitIndex + x * (1 - 2 * suitIndex);
+
+                    animationNodes.push(getPiece(suit, value));
+                    animationDestinations.push(getSpace(suitX, y));
+                });
+            }
+        });
 
         this.animateTranslation(animationNodes, animationDestinations);
         this.updateDeployment();
@@ -889,7 +896,9 @@ define([
         this.ajaxcall("/quattuorreges/quattuorreges/rescue.html", {
             pieces: args,
             lock: true,
-        }, () => {});
+        }, () => {
+            this.phantomRescue = 0;
+        });
     },
 
     pass() {
@@ -1028,7 +1037,7 @@ define([
                     m2.position - m1.position;
             });
 
-            const timeStep = 100;
+            const timeStep = 50;
             const pieces = moves.map(m => m.piece);
             const spaces = moves.map(m => m.space);
             this.animateTranslation(pieces, spaces, timeStep);
