@@ -15,15 +15,6 @@ $gameinfos = array(
 // Name of the game in English (will serve as the basis for translation) 
 'game_name' => "Quattuor Reges",
 
-// Game designer (or game designers, separated by commas)
-'designer' => 'Gauthier Fourcade',
-
-// Game artist (or game artists, separated by commas)
-'artist' => '',
-
-// Year of FIRST publication of this game. Can be negative.
-'year' => 2024,
-
 // Game publisher (use empty string if there is no publisher)
 'publisher' => '',
 
@@ -86,18 +77,6 @@ $gameinfos = array(
 // NB: the default will be the first language in this list spoken by the player, so you should list them by popularity/preference.
 'language_dependency' => false,
 
-// Complexity of the game, from 0 (extremely simple) to 5 (extremely complex)
-'complexity' => 2,
-
-// Luck of the game, from 0 (absolutely no luck in this game) to 5 (totally luck driven)
-'luck' => 0,
-
-// Strategy of the game, from 0 (no strategy can be setup) to 5 (totally based on strategy)
-'strategy' => 5,
-
-// Diplomacy of the game, from 0 (no interaction in this game) to 5 (totally based on interaction and discussion between players)
-'diplomacy' => 0,
-
 // Colors attributed to players
 'player_colors' => ['ff0000', '000000'],
 
@@ -123,14 +102,6 @@ $gameinfos = array(
     //  maximum possible value: unlimited
     //  minimum possible value: 740
     'max' => null
-],
-
-// Game presentation
-// Short game presentation text that will appear on the game description page, structured as an array of paragraphs.
-// Each paragraph must be wrapped with totranslate() for translation and should not contain html (plain text without formatting).
-// A good length for this text is between 100 and 150 words (about 6 to 9 lines on a standard display)
-'presentation' => [
-    totranslate('Quattuor Reges is an abstract game played with pieces representing cards from the classic 32 card deck. Red and black players each take 16 cards having suits of the corresponding color and race to reach the opposite side of the board first. A circular system of captures ensures than no piece can ever feel itself completely safe.')
 ],
 
 //////// BGA SANDBOX ONLY PARAMETERS (DO NOT MODIFY)
