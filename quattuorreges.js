@@ -481,6 +481,7 @@ define([
             switch (stateName) {
                 case "move": {
                     const selection = [];
+                    const warning = [];
                     const movedSuits = parseInt(state.args.movedSuits);
                     const rescuedPieces = parseInt(state.args.rescuedPieces);
                     const lockedBases = playerBases[this.playerColor]
@@ -504,11 +505,17 @@ define([
                             {
                                 const space = piece.parentElement;
                                 space.classList.add("qtr-selectable");
-                                selection.push(space);
+
+                                if (isCapturable(space.dataset.x, space.dataset.y, -1, -1, piece.dataset.color, piece.dataset.value, 4)) {
+                                    warning.push(space);
+                                } else {
+                                    selection.push(space);
+                                }
                             }
                         }
                     }
                     buildSelection(selection);
+                    buildWarning(warning);
                     break;
                 }
                 case "clientMove": {
@@ -521,15 +528,21 @@ define([
                     break;
                 }
                 case "retreat": {
-                    const selection = []
+                    const selection = [];
+                    const warning = [];
                     const value = state.args.piece
                     const piece = getPiece(value.suit, value.value);
                     const retreat = getSpace(value.x, value.y);
                     for (const space of [retreat, piece.parentElement]) {
                         space.classList.add("qtr-selectable");
-                        selection.push(space);
+                        if (isCapturable(space.dataset.x, space.dataset.y, -1, -1, piece.dataset.color, piece.dataset.value, 4)) {
+                            warning.push(space);
+                        } else {
+                            selection.push(space);
+                        }
                     }
                     buildSelection(selection);
+                    buildWarning(warning);
                     break;
                 }
                 case "rescue": {
@@ -548,11 +561,17 @@ define([
                 }
                 case "clientRescueBase": {
                     const selection = [];
+                    const warning = [];
                     for (const base of getFreeBases(this.playerColor)) {
                         base.classList.add("qtr-selectable");
-                        selection.push(base);
+                        if (isCapturable(base.dataset.x, base.dataset.y, -1, -1, this.selectedPiece.dataset.color, this.selectedPiece.dataset.value, 4)) {
+                            warning.push(base);
+                        } else {
+                            selection.push(base);
+                        }
                     }
                     buildSelection(selection);
+                    buildWarning(warning);
                     break;
                 }
             }
