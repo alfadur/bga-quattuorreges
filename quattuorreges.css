@@ -59,10 +59,12 @@
     box-shadow: 0 4px 6px black;
     pointer-events: none;
     transform-origin: center;
+    filter: brightness(1.2);
 }
 
 #qtr-board-container[data-color="black"] #qtr-board-background {
     transform: rotate(180deg);
+    box-shadow: 0 -4px 6px black;
 }
 
 .qtr-board-svg {
@@ -256,24 +258,77 @@
     #qtr-board-container[data-color="black"] .qtr-captures[data-color="red"] {
         align-content: flex-end;
     }
+
+    #qtr-help-button-place {
+        position: relative;
+        left: calc(var(--space-width) * -10 - 8px);
+        top: calc(var(--space-height) * -2 - 8px);
+        margin-bottom: -80px;
+    }
 }
 
-#qtr-capture-help {
-    width: calc(var(--space-height) * 62 / 88);
-    height: var(--space-height);
-    margin-top: 6px;
-    background-image: url("img/capture.png");
-    background-size:
-        calc(calc(var(--space-height) * 62 / 88) * 10)
-        calc(var(--space-height) * 7.75);
-    background-position:
-        calc(calc(var(--space-height) * 62 / 88) * -4.5)
-        calc(var(--space-height) * -3.6);
-    transition: scale 200ms ease-out;
+#qtr-help-button-place, #qtr-board-help-button-place {
+    height: 80px;
+    pointer-events: none;
 }
 
-#qtr-capture-help:hover {
-    scale: 1.2;
+#qtr-help-button-place {
+    width: 80px;
+    margin: 6px auto;
+}
+
+#qtr-board-help-button-place {
+    position: absolute;
+    width: 240px;
+    left: 0;
+    right:  0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+}
+
+#qtr-help-button {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: left;
+    align-items: center;
+    background: #b31818;
+    color: #f4bb99;
+    outline: 2px solid #d27b0b;
+    border-radius: 60px;
+    box-shadow: 0 5px 4px black;
+    font-size: 32px;
+    font-variant: small-caps;
+    overflow: hidden;
+    transition: color 200ms ease-in-out, width 400ms ease-out;
+    cursor: pointer;
+    pointer-events: all;
+}
+
+#qtr-help-button:hover {
+    color: #dfdf80;
+}
+
+#qtr-help-button div:first-child {
+    font-size: 50px;
+    margin-left: 15px;
+}
+
+#qtr-help-button div:last-child {
+    transition: opacity 500ms ease-in;
+    flex-grow: 1;
+    text-align: center;
+}
+
+#qtr-help-button.qtr-moving,
+#qtr-help-button.qtr-moving-simple {
+    width: 240px;
+}
+
+#qtr-help-button-place #qtr-help-button div:last-child {
+    opacity: 0;
 }
 
 .qtr-capture-diagram {

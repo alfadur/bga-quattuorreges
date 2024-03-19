@@ -31,9 +31,11 @@
                 </div>
                 <!-- END row -->
             </div>
+            <div id="qtr-board-help-button-place"></div>
         </div>
         <div class="qtr-captures" data-color="red"></div>
     </div>
+    <div id="qtr-help-button-place"></div>
 </div>
 
 {OVERALL_GAME_FOOTER}

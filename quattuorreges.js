@@ -457,21 +457,22 @@ define([
                 document.getElementById(id).dataset.baseIndex = index.toString());
         }
 
-        if (!this.isSpectator) {
-            const playerBoard = document.getElementById(
-                `player_board_${this.getCurrentPlayerId()}`);
-            const help = createElement(playerBoard,
-                `<div id="qtr-capture-help"></div>`);
-            help.addEventListener("click", event => {
-                event.stopPropagation();
-                const dialog = new ebg.popindialog();
-                dialog.create("qtr-capture-dialog");
-                dialog.setTitle(_("Capture Diagram"));
-                dialog.setContent(`<div class="qtr-capture-diagram"></div>`);
-                dialog.show();
-            });
-            this.addTooltip(help.getAttribute("id"), "", "Show piece capture diagram");
-        }
+        const helpContainer = document.getElementById("qtr-help-button-place");
+        const helpTitle =  _("Reference");
+        const helpButton = createElement(helpContainer, `<div id="qtr-help-button">
+            <div class="fa6-solid fa6-circle-question"></div>
+            <div>${helpTitle}</div>
+        </div>`);
+
+        helpButton.addEventListener("mousedown", () => {
+            const dialog = new ebg.popindialog();
+            dialog.create("qtr-capture-dialog");
+            dialog.setTitle(_("Capture Diagram"));
+            dialog.setContent(`<div class="qtr-capture-diagram"></div>`);
+            dialog.show();
+        });
+
+        this.addTooltip(helpButton.getAttribute("id"), "", "Show piece capture diagram");
 
         this.setupNotifications();
     },
@@ -576,6 +577,12 @@ define([
                 }
             }
         }
+
+        if (stateName === "setup") {
+            const help = document.getElementById("qtr-help-button");
+            const helpContainer = document.getElementById("qtr-board-help-button-place");
+            helpContainer.appendChild(help);
+        }
     },
 
     onLeavingState(stateName) {
@@ -584,6 +591,10 @@ define([
         }
         switch (stateName) {
             case "setup":
+                const help = document.getElementById("qtr-help-button");
+                const helpContainer = document.getElementById("qtr-help-button-place");
+                this.animateTranslation(help, helpContainer);
+            //fallthrough
             case "clientMove":
             case "clientRescueBase": {
                 if (this.unselectPiece()) {
@@ -916,7 +927,7 @@ define([
             pieces: args,
             lock: true,
         }, () => {
-            this.phantomRescue = 0;
+            this.phantomRescue = null;
         });
     },
 
@@ -973,6 +984,11 @@ define([
             node.getBoundingClientRect());
         nodes.forEach((node, index) => {
             if (node.parentElement !== destinations[index]) {
+                if (this.useOffsetAnimation) {
+                    node.classList.add("qtr-moving");
+                } else {
+                    node.classList.add("qtr-moving-simple");
+                }
                 destinations[index].appendChild(node)
             }
         });
