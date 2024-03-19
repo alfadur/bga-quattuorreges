@@ -608,7 +608,7 @@ define([
                     const spaces = document.querySelectorAll(
                         `.qtr-board-space[data-color="${this.playerColor}"]`);
                     for (const space of spaces) {
-                            space.classList.add("qtr-selectable");
+                        space.classList.add("qtr-selectable");
                     }
                     if (typeof g_ReplayFrom === "undefined" && !g_archive_mode) {
                         this.addActionButton("qtr-randomize", `🎲 ${_("Randomize")}`, event => {
