@@ -63,7 +63,7 @@ $machinestates = [
         Fsm::NAME => 'setup',
         Fsm::TYPE => FsmType::MULTIPLE_PLAYERS,
         Fsm::DESCRIPTION => clienttranslate('All players must secretly place pieces'),
-        Fsm::OWN_DESCRIPTION => clienttranslate('You must secretly place pieces'),
+        Fsm::OWN_DESCRIPTION => clienttranslate('${you} must secretly place pieces'),
         Fsm::ACTION => 'stMakeEveryoneActive',
         Fsm::POSSIBLE_ACTIONS => ['deploy', 'cancel'],
         Fsm::TRANSITIONS => ['' => State::REVEAL]

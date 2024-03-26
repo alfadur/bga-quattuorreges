@@ -472,7 +472,7 @@ define([
             dialog.show();
         });
 
-        this.addTooltip(helpButton.getAttribute("id"), "", "Show piece capture diagram");
+        this.addTooltip(helpButton.getAttribute("id"), "", _("Show rules reference"));
 
         this.setupNotifications();
     },
