@@ -331,9 +331,47 @@
     opacity: 0;
 }
 
+
+#qtr-pinned-diagram {
+    position: fixed;
+    width: 300px;
+    height: 450px;
+    right: 0;
+    bottom: 6px;
+    box-shadow: -2px 2px 2px #181e39;
+    z-index: 10;
+    transition: opacity 350ms ease-out;
+    cursor: pointer;
+}
+
+#qtr-pinned-diagram.hidden, #qtr-pinned-diagram.qtr-fading {
+    opacity: 0;
+}
+
 .qtr-capture-diagram {
-    width: 475px;
-    height: 500px;
-    background-image: url("img/capture.png");
+    width: 450px;
+    height: 675px;
+}
+
+#qtr-pinned-diagram, .qtr-capture-diagram {
+    border-radius: 20px;
+    background-image: url("img/diagram.jpg");
     background-size: cover;
+}
+
+.qtr-pin-button {
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 8px;
+    font-size: 30px;
+    color: #c16f1f;
+    -webkit-text-stroke: 2px black;
+    transform-origin: center;
+    transition: transform 220ms ease-in, color 220ms ease-in;
+}
+
+.qtr-pin-button:hover {
+    color: #e99e4f;
+    transform: scale(1.2);
+    cursor: pointer;
 }

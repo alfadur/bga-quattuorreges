@@ -37,5 +37,6 @@
     </div>
     <div id="qtr-help-button-place"></div>
 </div>
+<div id="qtr-pinned-diagram" class="hidden"></div>
 
 {OVERALL_GAME_FOOTER}

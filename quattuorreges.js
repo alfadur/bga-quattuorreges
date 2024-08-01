@@ -437,7 +437,9 @@ define([
                 }
             }
 
-            if (data.gamestate.name !== "setup") {
+            const isSetup = document.querySelector(".qtr-board-space .qtr-piece") === null;
+
+            if (!isSetup && data.gamestate.name !== "setup") {
                 const king = getPiece(suit, 13);
                 if (!king.parentElement.classList.contains("qtr-board-space")) {
                     this.updateSuitActivity(suit, false);
@@ -465,14 +467,26 @@ define([
         </div>`);
 
         helpButton.addEventListener("mousedown", () => {
+            this.hidePinnedDiagram()
+
+            const pinButtonHtml = `<div class="qtr-pin-button fa6-solid fa6-thumbtack"></div>`
             const dialog = new ebg.popindialog();
             dialog.create("qtr-capture-dialog");
-            dialog.setTitle(_("Capture Diagram"));
+            dialog.setTitle(_("Rules Reference") + pinButtonHtml);
             dialog.setContent(`<div class="qtr-capture-diagram"></div>`);
             dialog.show();
+
+            document.querySelector(".qtr-pin-button").addEventListener("mousedown", () => {
+                dialog.destroy();
+                document.getElementById("qtr-pinned-diagram").classList.remove("hidden", "qtr-fading");
+            });
         });
 
         this.addTooltip(helpButton.getAttribute("id"), "", _("Show rules reference"));
+
+        document.getElementById("qtr-pinned-diagram").addEventListener("mousedown", () => {
+            this.hidePinnedDiagram();
+        });
 
         this.setupNotifications();
     },
@@ -701,6 +715,16 @@ define([
                 }
             }
         }
+    },
+
+    hidePinnedDiagram() {
+        const pinnedDiagram = document.getElementById("qtr-pinned-diagram");
+        pinnedDiagram.classList.add("qtr-fading");
+        setTimeout(() => {
+            if (pinnedDiagram.classList.contains("qtr-fading")) {
+                pinnedDiagram.classList.add("hidden");
+            }
+        }, 350);
     },
 
     selectPiece(piece) {
